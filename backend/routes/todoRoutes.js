@@ -1,4 +1,5 @@
 const express = require("express");
+const Board = require("../models/Board");
 const Todo = require("../models/Todo");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
@@ -19,6 +20,50 @@ function todayBucket() {
   // YYYY-MM-DD
   const d = new Date();
   return d.toISOString().slice(0, 10);
+}
+
+async function ensureDefaultBoard(userId) {
+  let board = await Board.findOne({
+    user: userId,
+    name: "Main",
+  });
+
+  if (!board) {
+    board = await Board.create({
+      user: userId,
+      name: "Main",
+    });
+  }
+
+  await Todo.updateMany(
+    {
+      user: userId,
+      $or: [
+        { board: { $exists: false } },
+        { board: null },
+      ],
+    },
+    {
+      $set: {
+        board: board._id,
+      },
+    }
+  );
+
+  return board;
+}
+
+async function resolveBoard(userId, boardId) {
+  if (!boardId) {
+    return ensureDefaultBoard(userId);
+  }
+
+  const board = await Board.findOne({
+    _id: boardId,
+    user: userId,
+  });
+
+  return board;
 }
 
 // Convert timeHint such as "17:30" into a real Date
@@ -111,12 +156,20 @@ async function maybeCreateReminder(userId, todo) {
    GET TODOS
 ========================================================= */
 
-// GET /api/todos
+// GET /api/todos?boardId=...
 router.get("/", async (req, res) => {
   try {
+    const board = await resolveBoard(req.userId, req.query.boardId);
+
+    if (!board) {
+      return res.status(404).json({
+        message: "Board not found",
+      });
+    }
+
     const todos = await Todo.find({
       user: req.userId,
-      createdForDate: todayBucket(),
+      board: board._id,
     }).sort({
       sortOrder: 1,
       createdAt: 1,
@@ -140,6 +193,7 @@ router.get("/", async (req, res) => {
 //
 // Example:
 // {
+//   "boardId": "...",
 //   "text": "Meeting with Raju sir",
 //   "priority": "high",
 //   "reminderDateTime": "2026-09-18T14:30:00+05:30",
@@ -149,11 +203,20 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     const {
+      boardId,
       text,
       priority,
       reminderDateTime,
       duration,
     } = req.body;
+
+    const board = await resolveBoard(req.userId, boardId);
+
+    if (!board) {
+      return res.status(404).json({
+        message: "Board not found",
+      });
+    }
 
     /* -----------------------------
        Validate text
@@ -209,6 +272,8 @@ router.post("/", async (req, res) => {
     const todo = await Todo.create({
       user: req.userId,
 
+      board: board._id,
+
       text: text.trim(),
 
       priority: priority || "medium",
@@ -252,13 +317,22 @@ router.post("/", async (req, res) => {
 // POST /api/todos/dictate
 //
 // {
+//   "boardId": "...",
 //   "transcript":
 //   "call mom at 5pm, then finish report urgent for 1 hour"
 // }
 
 router.post("/dictate", async (req, res) => {
   try {
-    const { transcript } = req.body;
+    const { boardId, transcript } = req.body;
+
+    const board = await resolveBoard(req.userId, boardId);
+
+    if (!board) {
+      return res.status(404).json({
+        message: "Board not found",
+      });
+    }
 
     if (!transcript || !transcript.trim()) {
       return res.status(400).json({
@@ -293,6 +367,8 @@ router.post("/dictate", async (req, res) => {
 
         return {
           user: req.userId,
+
+          board: board._id,
 
           text: p.text,
 
@@ -334,7 +410,7 @@ router.post("/dictate", async (req, res) => {
     const organized =
       await reorganizeAndSave(
         req.userId,
-        bucket,
+        board._id,
       );
 
     res.status(201).json({
@@ -362,10 +438,18 @@ router.post("/dictate", async (req, res) => {
 
 router.post("/organize", async (req, res) => {
   try {
+    const board = await resolveBoard(req.userId, req.body.boardId);
+
+    if (!board) {
+      return res.status(404).json({
+        message: "Board not found",
+      });
+    }
+
     const organized =
       await reorganizeAndSave(
         req.userId,
-        todayBucket(),
+        board._id,
       );
 
     res.json(organized);
@@ -384,11 +468,11 @@ router.post("/organize", async (req, res) => {
 
 async function reorganizeAndSave(
   userId,
-  bucket,
+  boardId,
 ) {
   const todos = await Todo.find({
     user: userId,
-    createdForDate: bucket,
+    board: boardId,
     completed: false,
   });
 
@@ -422,7 +506,7 @@ async function reorganizeAndSave(
 
   return Todo.find({
     user: userId,
-    createdForDate: bucket,
+    board: boardId,
   }).sort({
     sortOrder: 1,
     createdAt: 1,
@@ -452,6 +536,18 @@ router.patch("/:id", async (req, res) => {
         updates[key] = req.body[key];
       }
     });
+
+    if (req.body.boardId !== undefined) {
+      const board = await resolveBoard(req.userId, req.body.boardId);
+
+      if (!board) {
+        return res.status(404).json({
+          message: "Board not found",
+        });
+      }
+
+      updates.board = board._id;
+    }
 
     /* -----------------------------
        Reminder Date/Time
