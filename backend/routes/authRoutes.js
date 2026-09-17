@@ -73,7 +73,7 @@ router.post("/register", async (req, res) => {
 
     res.status(201).json({
       token,
-      user: { id: user._id, name: user.name, username: user.username, email: user.email, avatar: user.avatar },
+      user: { id: user._id, name: user.name, username: user.username, email: user.email, avatar: user.avatar, profile: user.profile },
     });
   } catch (err) {
     console.error(err);
@@ -106,7 +106,7 @@ router.post("/login", async (req, res) => {
     const token = signToken(user._id);
     res.json({
       token,
-      user: { id: user._id, name: user.name, username: user.username, email: user.email, avatar: user.avatar },
+      user: { id: user._id, name: user.name, username: user.username, email: user.email, avatar: user.avatar, profile: user.profile },
     });
   } catch (err) {
     console.error(err);
@@ -119,6 +119,16 @@ router.patch("/profile", auth, async (req, res) => {
     const name = String(req.body.name || "").trim();
     const avatar = req.body.avatar || null;
     const username = normalizeUsername(req.body.username);
+    const incomingProfile = req.body.profile || {};
+    const cleanProfile = {
+      bio: String(incomingProfile.bio || "").trim().slice(0, 280),
+      website: String(incomingProfile.website || "").trim().slice(0, 300),
+      youtube: String(incomingProfile.youtube || "").trim().slice(0, 300),
+      facebook: String(incomingProfile.facebook || "").trim().slice(0, 300),
+      instagram: String(incomingProfile.instagram || "").trim().slice(0, 300),
+      linkedin: String(incomingProfile.linkedin || "").trim().slice(0, 300),
+      x: String(incomingProfile.x || "").trim().slice(0, 300),
+    };
 
     if (!name || name.length > 80) {
       return res.status(400).json({ message: "Name must be between 1 and 80 characters" });
@@ -137,10 +147,19 @@ router.patch("/profile", auth, async (req, res) => {
     ) {
       return res.status(400).json({ message: "Profile image must be a valid JPG, PNG, or WebP" });
     }
+    if (cleanProfile.website) {
+      try {
+        const website = new URL(cleanProfile.website);
+        if (!["http:", "https:"].includes(website.protocol)) throw new Error();
+        cleanProfile.website = website.toString();
+      } catch {
+        return res.status(400).json({ message: "Website must be a valid HTTP or HTTPS URL" });
+      }
+    }
 
     const user = await User.findByIdAndUpdate(
       req.userId,
-      { name, username, avatar },
+      { name, username, avatar, profile: cleanProfile },
       { new: true, runValidators: true }
     );
 
@@ -152,6 +171,7 @@ router.patch("/profile", auth, async (req, res) => {
       username: user.username,
       email: user.email,
       avatar: user.avatar,
+      profile: user.profile,
     });
   } catch (err) {
     console.error("Update profile error:", err);

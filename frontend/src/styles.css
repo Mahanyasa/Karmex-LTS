@@ -1137,7 +1137,8 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 
 .settings-field { display: block; margin-top: 17px; }
 .settings-field > span { display: block; margin-bottom: 7px; color: var(--muted); font-size: 10px; font-weight: 900; text-transform: uppercase; }
-.settings-field input {
+.settings-field input,
+.settings-field textarea {
   width: 100%;
   padding: 12px 13px;
   color: var(--text);
@@ -1145,10 +1146,13 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   border: 1px solid var(--border);
   border-radius: 6px;
 }
+.settings-field textarea { min-height: 96px; resize: vertical; font: inherit; line-height: 1.55; }
 .settings-field input:disabled { color: #707887; cursor: not-allowed; }
 .username-field { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: stretch; }
 .username-field b { display: grid; place-items: center; color: var(--accent); background: #11151d; border: 1px solid var(--border); border-right: 0; border-radius: 6px 0 0 6px; }
 .username-field input { margin: 0; border-radius: 0 6px 6px 0; }
+.profile-links-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.profile-links-grid .wide { grid-column: 1 / -1; }
 .settings-form-actions { display: flex; justify-content: flex-end; align-items: center; gap: 16px; margin-top: 24px; }
 .text-action { color: var(--muted); background: transparent; border: 0; font-size: 11px; font-weight: 800; cursor: pointer; }
 .text-action:hover { color: var(--danger); }
@@ -1196,7 +1200,8 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .social-avatar { width: 34px; height: 34px; display: grid; place-items: center; overflow: hidden; color: var(--accent-ink); background: var(--accent); border-radius: 6px; font-size: 11px; font-weight: 900; }
 .social-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .social-row > div:not(.social-actions) { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.social-row strong { font-size: 11px; }
+.social-row strong, .social-row a { color: var(--text); font-size: 11px; font-weight: 800; text-decoration: none; }
+.social-row a:hover { color: var(--accent); }
 .social-row div span { color: var(--muted); font-size: 9px; }
 .social-actions { display: flex; gap: 5px; }
 .social-actions button, .social-remove, .shared-access-list button { padding: 6px 8px; color: var(--muted-strong); background: var(--surface-raised); border: 1px solid var(--border); border-radius: 5px; font-size: 9px; font-weight: 800; cursor: pointer; }
@@ -1212,6 +1217,27 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .shared-board-notice { min-height: 150px; display: flex; flex-direction: column; justify-content: center; gap: 8px; margin-bottom: 34px; padding: 28px; color: #252a32; background: rgba(255, 255, 255, 0.52); border: 1px solid rgba(36, 41, 49, 0.16); border-radius: 6px; }
 .shared-board-notice strong { font-size: 15px; }
 .shared-board-notice span { color: #69717c; font-size: 11px; }
+
+.public-profile-page { min-height: 100vh; background: var(--bg); }
+.profile-nav { height: 72px; display: flex; justify-content: space-between; align-items: center; padding: 0 clamp(20px, 5vw, 72px); border-bottom: 1px solid var(--border); }
+.profile-nav > a:last-child { color: var(--muted-strong); font-size: 10px; font-weight: 800; text-decoration: none; }
+.profile-hero { width: min(100% - 40px, 780px); margin: 0 auto; padding: 72px 0 90px; }
+.profile-portrait { width: 112px; height: 112px; display: grid; place-items: center; margin-bottom: 28px; overflow: hidden; color: var(--accent-ink); background: var(--accent); border: 4px solid #202632; border-radius: 8px; box-shadow: 0 0 0 2px rgba(183, 240, 74, 0.2), 0 24px 60px rgba(0, 0, 0, 0.35); font-size: 38px; font-weight: 900; }
+.profile-portrait img { width: 100%; height: 100%; object-fit: cover; }
+.profile-hero h1 { margin: 5px 0 7px; font-size: clamp(42px, 7vw, 70px); line-height: 1; overflow-wrap: anywhere; }
+.profile-hero > strong { color: var(--accent); font-size: 14px; }
+.profile-hero > p { max-width: 680px; margin: 24px 0 36px; color: var(--muted-strong); font-size: 15px; line-height: 1.75; }
+.profile-social-links { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.profile-social-links a { min-width: 0; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 15px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 7px; text-decoration: none; }
+.profile-social-links a:hover { border-color: var(--border-strong); background: var(--surface-raised); }
+.profile-social-links a > span { width: 38px; height: 38px; display: grid; place-items: center; color: var(--accent); background: rgba(183, 240, 74, 0.07); border: 1px solid rgba(183, 240, 74, 0.2); border-radius: 5px; font-size: 9px; font-weight: 900; }
+.profile-social-links a div { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.profile-social-links small { color: var(--muted); font-size: 8px; font-weight: 900; text-transform: uppercase; }
+.profile-social-links strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.profile-social-links b { color: var(--muted); }
+.profile-member-since { display: block; margin-top: 32px; color: var(--muted); font-size: 9px; text-transform: uppercase; }
+.profile-error { width: min(100% - 40px, 600px); margin: 0 auto; padding-top: 20vh; color: var(--muted); text-align: center; }
+.profile-error a { color: var(--accent); }
 
 .github-workspace { max-width: 1420px; }
 .github-connect-state { min-height: 65vh; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; max-width: 680px; }
@@ -1440,6 +1466,8 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   .file-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .folder-card, .file-card { min-height: 160px; }
   .settings-panel { padding: 22px 18px; }
+  .profile-links-grid, .profile-social-links { grid-template-columns: 1fr; }
+  .profile-links-grid .wide { grid-column: auto; }
   .github-header, .github-toolbar { align-items: stretch; flex-direction: column; }
   .github-orgs { justify-content: flex-start; }
   .github-toolbar select { width: 100%; }

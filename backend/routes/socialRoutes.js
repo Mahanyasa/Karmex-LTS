@@ -7,6 +7,13 @@ const router = express.Router();
 router.use(auth);
 const publicUser = "name username avatar";
 
+router.get("/profile/:username", async (req, res) => {
+  const username = String(req.params.username || "").toLowerCase();
+  const user = await User.findOne({ username }).select("name username avatar profile createdAt");
+  if (!user) return res.status(404).json({ message: "Profile not found" });
+  res.json(user);
+});
+
 router.get("/", async (req, res) => {
   try {
     const [incoming, outgoing, accepted] = await Promise.all([

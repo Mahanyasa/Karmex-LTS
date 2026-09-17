@@ -23,6 +23,15 @@ const userSchema = new mongoose.Schema(
     },
     password: { type: String, required: true, minlength: 6 },
     avatar: { type: String, default: null, maxlength: 750000 },
+    profile: {
+      bio: { type: String, default: "", maxlength: 280 },
+      website: { type: String, default: "", maxlength: 300 },
+      youtube: { type: String, default: "", maxlength: 300 },
+      facebook: { type: String, default: "", maxlength: 300 },
+      instagram: { type: String, default: "", maxlength: 300 },
+      linkedin: { type: String, default: "", maxlength: 300 },
+      x: { type: String, default: "", maxlength: 300 },
+    },
     legalAcceptance: {
       termsVersion: { type: String, default: null },
       privacyVersion: { type: String, default: null },

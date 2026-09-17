@@ -36,6 +36,7 @@ export default function Settings({ googleConnected, connectGoogle, disconnectGoo
   const fileInputRef = useRef(null);
   const [name, setName] = useState(user?.name || "");
   const [username, setUsername] = useState(user?.username || "");
+  const [profile, setProfile] = useState({ bio: "", website: "", youtube: "", facebook: "", instagram: "", linkedin: "", x: "", ...(user?.profile || {}) });
   const [avatar, setAvatar] = useState(user?.avatar || null);
   const [storage, setStorage] = useState({ loading: true, connected: false });
   const [saving, setSaving] = useState(false);
@@ -77,7 +78,7 @@ export default function Settings({ googleConnected, connectGoogle, disconnectGoo
     try {
       setSaving(true);
       setMessage("");
-      await updateProfile({ name, username, avatar });
+      await updateProfile({ name, username, avatar, profile });
       setMessage("Profile updated.");
     } catch (err) {
       setMessage(err.response?.data?.message || "Failed to update profile");
@@ -116,6 +117,16 @@ export default function Settings({ googleConnected, connectGoogle, disconnectGoo
             <label className="settings-field"><span>Display name</span><input value={name} onChange={(event) => setName(event.target.value)} maxLength="80" required /></label>
             <label className="settings-field"><span>Unique username</span><div className="username-field"><b>@</b><input value={username} onChange={(event) => setUsername(event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))} minLength="3" maxLength="24" required /></div></label>
             <label className="settings-field"><span>Email address</span><input value={user?.email || ""} disabled /></label>
+            <label className="settings-field"><span>Bio</span><textarea value={profile.bio} onChange={(event) => setProfile({ ...profile, bio: event.target.value })} maxLength="280" placeholder="A short introduction for your public profile" /></label>
+
+            <div className="profile-links-grid">
+              <label className="settings-field wide"><span>Website</span><input type="url" value={profile.website} onChange={(event) => setProfile({ ...profile, website: event.target.value })} placeholder="https://your-site.com" /></label>
+              <label className="settings-field"><span>YouTube</span><input value={profile.youtube} onChange={(event) => setProfile({ ...profile, youtube: event.target.value })} placeholder="@channel or profile URL" /></label>
+              <label className="settings-field"><span>Instagram</span><input value={profile.instagram} onChange={(event) => setProfile({ ...profile, instagram: event.target.value })} placeholder="@username or profile URL" /></label>
+              <label className="settings-field"><span>Facebook</span><input value={profile.facebook} onChange={(event) => setProfile({ ...profile, facebook: event.target.value })} placeholder="username or profile URL" /></label>
+              <label className="settings-field"><span>LinkedIn</span><input value={profile.linkedin} onChange={(event) => setProfile({ ...profile, linkedin: event.target.value })} placeholder="profile ID or URL" /></label>
+              <label className="settings-field wide"><span>X</span><input value={profile.x} onChange={(event) => setProfile({ ...profile, x: event.target.value })} placeholder="@username or profile URL" /></label>
+            </div>
 
             <div className="settings-form-actions">
               {avatar && <button type="button" className="text-action" onClick={() => setAvatar(null)}>Remove photo</button>}

@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 import api from "../api";
 import { useNotifications } from "../context/NotificationContext";
+import { Link } from "react-router-dom";
 
 function Person({ person }) {
-  return <><span className="social-avatar">{person.avatar ? <img src={person.avatar} alt="" /> : person.name.charAt(0).toUpperCase()}</span><div><strong>{person.name}</strong><span>@{person.username}</span></div></>;
+  return <><span className="social-avatar">{person.avatar ? <img src={person.avatar} alt="" /> : person.name.charAt(0).toUpperCase()}</span><div><Link to={`/u/${person.username}`}>{person.name}</Link><span>@{person.username}</span></div></>;
 }
 
 export default function SocialPanel({ boards, reloadBoards }) {
