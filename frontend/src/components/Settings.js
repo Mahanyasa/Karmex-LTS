@@ -28,7 +28,7 @@ function resizeAvatar(file) {
   });
 }
 
-export default function Settings({ googleConnected, connectGoogle, disconnectGoogle }) {
+export default function Settings({ googleConnected, connectGoogle, disconnectGoogle, githubConnected, githubProfile, connectGitHub, disconnectGitHub }) {
   const { user, updateProfile, logout } = useAuth();
   const fileInputRef = useRef(null);
   const [name, setName] = useState(user?.name || "");
@@ -138,6 +138,15 @@ export default function Settings({ googleConnected, connectGoogle, disconnectGoo
             </article>
 
             <article className="connection-row">
+              <span className="connection-logo github-logo">GH</span>
+              <div><strong>GitHub</strong><span>{githubConnected ? `@${githubProfile?.login || "connected"} · personal and organization activity` : "Track repositories, pull requests, issues, and commits."}</span></div>
+              <div className="connection-control">
+                <span className={githubConnected ? "connection-state connected" : "connection-state"}>{githubConnected ? "Connected" : "Not connected"}</span>
+                <button type="button" className="secondary-btn" onClick={githubConnected ? disconnectGitHub : connectGitHub}>{githubConnected ? "Disconnect" : "Connect"}</button>
+              </div>
+            </article>
+
+            <article className="connection-row">
               <span className="connection-logo s3-logo">S3</span>
               <div><strong>Private file storage</strong><span>{storage.connected ? `${storage.bucket} · ${storage.region}` : storage.message || "Checking AWS S3"}</span></div>
               <div className="connection-control"><span className={storage.connected ? "connection-state connected" : "connection-state error"}>{storage.loading ? "Checking" : storage.connected ? "Connected" : "Needs attention"}</span></div>
@@ -153,4 +162,3 @@ export default function Settings({ googleConnected, connectGoogle, disconnectGoo
     </main>
   );
 }
-

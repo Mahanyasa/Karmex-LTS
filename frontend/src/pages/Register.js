@@ -61,7 +61,7 @@ export default function Register() {
 
         <label className="legal-consent">
           <input type="checkbox" checked={acceptLegal} onChange={(e) => setAcceptLegal(e.target.checked)} required />
-          <span>I agree to the <Link to="/terms" target="_blank">Terms v1.0</Link> and acknowledge the <Link to="/privacy" target="_blank">Privacy Policy v1.0</Link>.</span>
+          <span>I agree to the <Link to="/terms" target="_blank">Terms v1.1</Link> and acknowledge the <Link to="/privacy" target="_blank">Privacy Policy v1.1</Link>.</span>
         </label>
 
         <button type="submit" disabled={busy || !acceptLegal}>
@@ -76,4 +76,3 @@ export default function Register() {
     </div>
   );
 }
-

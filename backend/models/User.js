@@ -28,6 +28,14 @@ const userSchema = new mongoose.Schema(
       expiry_date: { type: Number, default: null },
     },
     googleConnected: { type: Boolean, default: false },
+    githubConnection: {
+      accessToken: { type: String, default: null },
+      scope: { type: String, default: null },
+      tokenType: { type: String, default: null },
+      login: { type: String, default: null },
+      avatarUrl: { type: String, default: null },
+    },
+    githubConnected: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
@@ -44,4 +52,3 @@ userSchema.methods.comparePassword = function (candidate) {
 };
 
 module.exports = mongoose.model("User", userSchema);
-

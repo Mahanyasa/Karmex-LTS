@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import useDictation from "../components/useDictation";
 import FileStorage from "../components/FileStorage";
 import Settings from "../components/Settings";
+import GitHubDashboard from "../components/GitHubDashboard";
 
 function formatDateTime(iso) {
   if (!iso) return "";
@@ -36,6 +37,8 @@ export default function Dashboard() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [googleConnected, setGoogleConnected] = useState(false);
+  const [githubConnected, setGithubConnected] = useState(false);
+  const [githubProfile, setGithubProfile] = useState(null);
   const [activeView, setActiveView] = useState("workspace");
 
   const activeBoard = boards.find((board) => board._id === activeBoardId);
@@ -101,12 +104,24 @@ export default function Dashboard() {
     }
   }
 
+  async function loadGitHubStatus() {
+    try {
+      const { data } = await api.get("/github/status");
+      setGithubConnected(Boolean(data.connected));
+      setGithubProfile(data.connected ? data : null);
+    } catch (err) {
+      console.error("GitHub status error:", err);
+    }
+  }
+
   useEffect(() => {
     loadBoards();
     loadGoogleStatus();
+    loadGitHubStatus();
 
     const params = new URLSearchParams(window.location.search);
     const googleParam = params.get("google");
+    const githubParam = params.get("github");
 
     if (googleParam === "connected") {
       setMessage("Google connected. New tasks will send phone reminders.");
@@ -117,7 +132,18 @@ export default function Dashboard() {
       setMessage("Something went wrong connecting Google. Try again.");
     }
 
-    if (googleParam) {
+    if (githubParam === "connected") {
+      setMessage("GitHub connected. Your personal and organization activity is ready.");
+      setGithubConnected(true);
+      setActiveView("github");
+      loadGitHubStatus();
+    } else if (githubParam === "denied") {
+      setMessage("GitHub connection was cancelled.");
+    } else if (githubParam === "error") {
+      setMessage("Something went wrong connecting GitHub. Try again.");
+    }
+
+    if (googleParam || githubParam) {
       window.history.replaceState({}, "", window.location.pathname);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -197,6 +223,27 @@ export default function Dashboard() {
     } catch (err) {
       console.error("Google disconnect error:", err);
       setMessage(err.response?.data?.message || "Failed to disconnect Google");
+    }
+  }
+
+  async function connectGitHub() {
+    try {
+      const { data } = await api.get("/github/auth-url");
+      if (!data?.url) throw new Error("GitHub authorization URL was not returned");
+      window.location.href = data.url;
+    } catch (err) {
+      setMessage(err.response?.data?.message || err.message || "Failed to start GitHub connection");
+    }
+  }
+
+  async function disconnectGitHub() {
+    try {
+      await api.post("/github/disconnect");
+      setGithubConnected(false);
+      setGithubProfile(null);
+      setMessage("GitHub disconnected.");
+    } catch (err) {
+      setMessage(err.response?.data?.message || "Failed to disconnect GitHub");
     }
   }
 
@@ -349,6 +396,13 @@ export default function Dashboard() {
           </button>
           <button
             type="button"
+            className={activeView === "github" ? "nav-link active" : "nav-link"}
+            onClick={() => setActiveView("github")}
+          >
+            GitHub
+          </button>
+          <button
+            type="button"
             className={activeView === "settings" ? "nav-link active" : "nav-link"}
             onClick={() => setActiveView("settings")}
           >
@@ -429,11 +483,17 @@ export default function Dashboard() {
           </div>
         </aside>}
 
-        {activeView === "files" ? <FileStorage /> : activeView === "settings" ? (
+        {activeView === "files" ? <FileStorage /> : activeView === "github" ? (
+          <GitHubDashboard connected={githubConnected} connectGitHub={connectGitHub} />
+        ) : activeView === "settings" ? (
           <Settings
             googleConnected={googleConnected}
             connectGoogle={connectGoogle}
             disconnectGoogle={disconnectGoogle}
+            githubConnected={githubConnected}
+            githubProfile={githubProfile}
+            connectGitHub={connectGitHub}
+            disconnectGitHub={disconnectGitHub}
           />
         ) : <main className="workspace">
           <header className="workspace-header">
@@ -617,4 +677,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
