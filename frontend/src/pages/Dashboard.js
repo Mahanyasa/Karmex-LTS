@@ -16,11 +16,11 @@ function formatDateTime(iso) {
   });
 }
 
-function calculateEndTime(reminderDateTime, duration) {
-  if (!reminderDateTime || !duration) return null;
-  const start = new Date(reminderDateTime);
-  if (Number.isNaN(start.getTime())) return null;
-  return new Date(start.getTime() + Number(duration) * 60 * 1000).toISOString();
+const POST_IT_COLORS = ["yellow", "pink", "blue", "mint", "lavender", "peach"];
+
+function postItTilt(id) {
+  const total = Array.from(id || "").reduce((sum, character) => sum + character.charCodeAt(0), 0);
+  return `${(total % 5) - 2}deg`;
 }
 
 export default function Dashboard() {
@@ -31,7 +31,6 @@ export default function Dashboard() {
   const [todos, setTodos] = useState([]);
   const [newText, setNewText] = useState("");
   const [newStart, setNewStart] = useState("");
-  const [newEnd, setNewEnd] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -153,6 +152,28 @@ export default function Dashboard() {
     }
   }
 
+  async function handleDeleteBoard(board) {
+    const taskCount = board._id === activeBoardId ? todos.length : "all";
+    const confirmed = window.confirm(
+      `Delete ${board.name} and ${taskCount} task${taskCount === 1 ? "" : "s"}? This cannot be undone.`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setBusy(true);
+      setMessage("");
+      const { data } = await api.delete(`/boards/${board._id}`);
+      setBoards(data.boards);
+      setActiveBoardId(data.boards[0]?._id || "");
+      setMessage(`${board.name} deleted.`);
+    } catch (err) {
+      setMessage(err.response?.data?.message || "Failed to delete board");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function connectGoogle() {
     try {
       const { data } = await api.get("/google/auth-url");
@@ -193,7 +214,7 @@ export default function Dashboard() {
     }
 
     if (!newStart) {
-      setMessage("Start date and time are required");
+      setMessage("Reminder date and time are required");
       return;
     }
 
@@ -203,20 +224,6 @@ export default function Dashboard() {
       return;
     }
 
-    let duration = 30;
-    if (newEnd) {
-      const endDate = new Date(newEnd);
-      if (Number.isNaN(endDate.getTime())) {
-        setMessage("Invalid end date/time");
-        return;
-      }
-      if (endDate <= startDate) {
-        setMessage("End time must be after start time");
-        return;
-      }
-      duration = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
-    }
-
     try {
       setBusy(true);
       const { data } = await api.post("/todos", {
@@ -224,12 +231,11 @@ export default function Dashboard() {
         text: newText.trim(),
         priority: "medium",
         reminderDateTime: startDate.toISOString(),
-        duration,
+        duration: 30,
       });
 
       setNewText("");
       setNewStart("");
-      setNewEnd("");
       await organize(activeBoardId);
 
       if (googleConnected && data?.googleEventId) {
@@ -369,16 +375,27 @@ export default function Dashboard() {
 
           <div className="board-list">
             {boards.map((board) => (
-              <button
-                key={board._id}
-                type="button"
-                className={board._id === activeBoardId ? "board-nav active" : "board-nav"}
-                onClick={() => setActiveBoardId(board._id)}
-              >
-                <span className="board-icon">{board.name.charAt(0).toUpperCase()}</span>
-                <span className="board-name">{board.name}</span>
-                {board._id === activeBoardId && <span className="active-indicator" />}
-              </button>
+              <div className="board-nav-row" key={board._id}>
+                <button
+                  type="button"
+                  className={board._id === activeBoardId ? "board-nav active" : "board-nav"}
+                  onClick={() => setActiveBoardId(board._id)}
+                >
+                  <span className="board-icon">{board.name.charAt(0).toUpperCase()}</span>
+                  <span className="board-name">{board.name}</span>
+                  {board._id === activeBoardId && <span className="active-indicator" />}
+                </button>
+                <button
+                  type="button"
+                  className="board-delete-btn"
+                  onClick={() => handleDeleteBoard(board)}
+                  disabled={busy}
+                  aria-label={`Delete ${board.name}`}
+                  title="Delete board"
+                >
+                  ×
+                </button>
+              </div>
             ))}
           </div>
 
@@ -460,10 +477,7 @@ export default function Dashboard() {
                 <span className="eyebrow">QUICK CAPTURE</span>
                 <h2>Add to {activeBoard?.name || "board"}</h2>
               </div>
-              <div className="capture-mode">
-                <span className="mode active">Task</span>
-                <span className="mode">Schedule</span>
-              </div>
+              <span className="reminder-badge">Reminder ready</span>
             </div>
 
             <form className="task-composer" onSubmit={handleAddManual}>
@@ -477,9 +491,9 @@ export default function Dashboard() {
                   required
                 />
               </div>
-              <div className="schedule-fields">
+              <div className="reminder-fields">
                 <label>
-                  <span>Starts</span>
+                  <span>Remind me</span>
                   <input
                     type="datetime-local"
                     value={newStart}
@@ -487,17 +501,8 @@ export default function Dashboard() {
                     required
                   />
                 </label>
-                <label>
-                  <span>Ends</span>
-                  <input
-                    type="datetime-local"
-                    value={newEnd}
-                    onChange={(event) => setNewEnd(event.target.value)}
-                    min={newStart || undefined}
-                  />
-                </label>
                 <button type="submit" className="accent-btn" disabled={busy || !activeBoardId}>
-                  {busy ? "Adding..." : "Add task"}
+                  {busy ? "Pinning..." : "Pin post-it"}
                 </button>
               </div>
             </form>
@@ -537,11 +542,11 @@ export default function Dashboard() {
             {dictationError && <p className="error-banner">Mic error: {dictationError}</p>}
           </section>
 
-          <section className="tasks-section">
+          <section className="tasks-section whiteboard-section">
             <div className="section-title-row">
               <div>
                 <span className="eyebrow">BOARD TASKS</span>
-                <h2>Focus list</h2>
+                <h2>Post-it whiteboard</h2>
               </div>
               <span className="task-summary">{upcomingCount} remaining</span>
             </div>
@@ -555,14 +560,15 @@ export default function Dashboard() {
                 <p>Add your first task above or capture a few by voice.</p>
               </div>
             ) : (
-              <div className="task-list">
-                {todos.map((todo) => {
-                  const endDateTime = calculateEndTime(todo.reminderDateTime, todo.duration);
+              <div className="task-list whiteboard">
+                {todos.map((todo, index) => {
                   return (
                     <article
                       key={todo._id}
-                      className={todo.completed ? "task-row completed" : "task-row"}
+                      className={`task-row post-it post-it-${POST_IT_COLORS[index % POST_IT_COLORS.length]} ${todo.completed ? "completed" : ""}`}
+                      style={{ "--post-it-tilt": postItTilt(todo._id) }}
                     >
+                      <span className="post-it-tape" aria-hidden="true" />
                       <label className="task-check">
                         <input
                           type="checkbox"
@@ -575,13 +581,9 @@ export default function Dashboard() {
                         <strong>{todo.text}</strong>
                         <div className="task-meta">
                           {todo.reminderDateTime && (
-                            <span>
-                              {formatDateTime(todo.reminderDateTime)}
-                              {endDateTime ? ` – ${formatDateTime(endDateTime)}` : ""}
-                            </span>
+                            <span className="post-it-reminder">Remind {formatDateTime(todo.reminderDateTime)}</span>
                           )}
                           {!todo.reminderDateTime && todo.timeHint && <span>{todo.timeHint}</span>}
-                          {todo.duration && <span>{todo.duration} min</span>}
                           <span className={`priority ${todo.priority}`}>{todo.priority}</span>
                           {todo.googleEventId && <span className="calendar-status">Calendar set</span>}
                         </div>

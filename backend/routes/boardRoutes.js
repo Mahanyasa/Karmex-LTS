@@ -1,7 +1,9 @@
 const express = require("express");
 const Board = require("../models/Board");
 const Todo = require("../models/Todo");
+const User = require("../models/User");
 const auth = require("../middleware/auth");
+const { deleteReminderEvent } = require("../utils/googleCalendar");
 
 const router = express.Router();
 router.use(auth);
@@ -129,4 +131,51 @@ router.patch("/:id", async (req, res) => {
   }
 });
 
+router.delete("/:id", async (req, res) => {
+  try {
+    const board = await Board.findOne({
+      _id: req.params.id,
+      user: req.userId,
+    });
+
+    if (!board) {
+      return res.status(404).json({ message: "Board not found" });
+    }
+
+    const todos = await Todo.find({
+      board: board._id,
+      user: req.userId,
+    });
+    const reminderTodos = todos.filter((todo) => todo.googleEventId);
+
+    if (reminderTodos.length) {
+      const user = await User.findById(req.userId);
+      if (user?.googleConnected) {
+        for (const todo of reminderTodos) {
+          try {
+            await deleteReminderEvent(user, todo.googleEventId);
+          } catch (err) {
+            console.error("[google] Failed deleting board reminder:", err.message);
+          }
+        }
+      }
+    }
+
+    await Todo.deleteMany({ board: board._id, user: req.userId });
+    await board.deleteOne();
+
+    let boards = await Board.find({ user: req.userId }).sort({ createdAt: 1 });
+    if (!boards.length) {
+      const mainBoard = await Board.create({ user: req.userId, name: "Main" });
+      boards = [mainBoard];
+    }
+
+    res.json({ deleted: true, boards });
+  } catch (err) {
+    console.error("Delete board error:", err);
+    res.status(500).json({ message: "Failed to delete board" });
+  }
+});
+
 module.exports = router;
+
