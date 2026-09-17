@@ -42,6 +42,7 @@ export default function Dashboard() {
   const [githubConnected, setGithubConnected] = useState(false);
   const [githubProfile, setGithubProfile] = useState(null);
   const [activeView, setActiveView] = useState("workspace");
+  const [sidebarMode, setSidebarMode] = useState(null);
 
   const activeBoard = boards.find((board) => board._id === activeBoardId);
   const completedCount = todos.filter((todo) => todo.completed).length;
@@ -68,7 +69,6 @@ export default function Dashboard() {
     listening,
     transcript,
     supported,
-    error: dictationError,
     start,
     stop,
     reset,
@@ -180,6 +180,7 @@ export default function Dashboard() {
       setBoards((current) => [...current, data]);
       setActiveBoardId(data._id);
       setNewBoardName("");
+      setSidebarMode(null);
       setMessage("Board created.");
     } catch (err) {
       console.error("Create board error:", err);
@@ -297,6 +298,7 @@ export default function Dashboard() {
 
       setNewText("");
       setNewStart("");
+      setSidebarMode(null);
       await organize(activeBoardId);
 
       if (googleConnected && data?.googleEventId) {
@@ -375,6 +377,7 @@ export default function Dashboard() {
 
       setTodos(data.todos);
       setMessage(`Added ${data.created} task(s) from dictation.`);
+      setSidebarMode(null);
       reset();
     } catch (err) {
       console.error("Dictation error:", err);
@@ -469,19 +472,41 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <form className="new-board-form" onSubmit={handleCreateBoard}>
-            <label htmlFor="board-name">Create board</label>
-            <div className="inline-input">
-              <input
-                id="board-name"
-                type="text"
-                placeholder="Board name"
-                value={newBoardName}
-                onChange={(event) => setNewBoardName(event.target.value)}
-              />
-              <button type="submit" disabled={busy} title="Add board">+</button>
-            </div>
-          </form>
+          <div className="sidebar-create-actions">
+            <button type="button" className={sidebarMode === "board" ? "active" : ""} onClick={() => setSidebarMode(sidebarMode === "board" ? null : "board")}><span>+</span> New board</button>
+            <button type="button" className={sidebarMode === "task" ? "active" : ""} onClick={() => setSidebarMode(sidebarMode === "task" ? null : "task")} disabled={!activeBoardId}><span>+</span> New post-it</button>
+          </div>
+
+          {sidebarMode === "board" && (
+            <form className="sidebar-create-panel" onSubmit={handleCreateBoard}>
+              <div className="sidebar-panel-heading"><strong>Create board</strong><button type="button" onClick={() => setSidebarMode(null)} aria-label="Close">×</button></div>
+              <label htmlFor="board-name">Board name</label>
+              <input id="board-name" type="text" placeholder="e.g. Product launch" value={newBoardName} onChange={(event) => setNewBoardName(event.target.value)} autoFocus />
+              <button type="submit" className="accent-btn" disabled={busy}>{busy ? "Creating..." : "Create board"}</button>
+            </form>
+          )}
+
+          {sidebarMode === "task" && (
+            <form className="sidebar-create-panel" onSubmit={handleAddManual}>
+              <div className="sidebar-panel-heading"><strong>New post-it</strong><button type="button" onClick={() => setSidebarMode(null)} aria-label="Close">×</button></div>
+              <label htmlFor="post-it-text">Task</label>
+              <textarea id="post-it-text" placeholder={`Add to ${activeBoard?.name || "board"}`} value={newText} onChange={(event) => setNewText(event.target.value)} autoFocus required />
+              <label htmlFor="post-it-reminder">Remind me</label>
+              <input id="post-it-reminder" type="datetime-local" value={newStart} onChange={(event) => setNewStart(event.target.value)} required />
+              <button type="submit" className="accent-btn" disabled={busy || !activeBoardId}>{busy ? "Pinning..." : "Pin post-it"}</button>
+              <button type="button" className={listening ? "sidebar-voice listening" : "sidebar-voice"} onClick={listening ? stop : start} disabled={!supported || busy}>{listening ? "Stop listening" : "Dictate instead"}</button>
+              {transcript && <button type="button" className="sidebar-transcript" onClick={submitDictation} disabled={busy}>Use: “{transcript}”</button>}
+            </form>
+          )}
+
+          {!sidebarMode && (
+            <section className="sidebar-stats" aria-label="Board overview">
+              <div><span>Open</span><strong>{upcomingCount}</strong></div>
+              <div><span>Done</span><strong>{completedCount}</strong></div>
+              <div className="sidebar-progress"><span>Progress</span><strong>{progress}%</strong><i><b style={{ width: `${progress}%` }} /></i></div>
+              <div className="sidebar-next"><span>Up next</span><strong>{nextTask?.text || "Nothing scheduled"}</strong><small>{nextTask ? formatDateTime(nextTask.reminderDateTime) : "No reminder set"}</small></div>
+            </section>
+          )}
 
           <div className="sidebar-footer">
             <div className="profile-row">
@@ -525,97 +550,6 @@ export default function Dashboard() {
               Organize tasks
             </button>
           </header>
-
-          <section className="stats-grid" aria-label="Board overview">
-            <div className="stat-block">
-              <span className="stat-label">Open tasks</span>
-              <strong>{upcomingCount}</strong>
-              <span className="stat-detail">{todos.length} total on this board</span>
-            </div>
-            <div className="stat-block">
-              <span className="stat-label">Completed</span>
-              <strong>{completedCount}</strong>
-              <span className="stat-detail">{progress}% board progress</span>
-            </div>
-            <div className="stat-block wide">
-              <span className="stat-label">Up next</span>
-              <strong className="next-task-name">{nextTask?.text || "Nothing scheduled"}</strong>
-              <span className="stat-detail">
-                {nextTask ? formatDateTime(nextTask.reminderDateTime) : "Add a time to your next task"}
-              </span>
-            </div>
-          </section>
-
-          <section className="composer-section">
-            <div className="section-title-row">
-              <div>
-                <span className="eyebrow">QUICK CAPTURE</span>
-                <h2>Add to {activeBoard?.name || "board"}</h2>
-              </div>
-              <span className="reminder-badge">Reminder ready</span>
-            </div>
-
-            <form className="task-composer" onSubmit={handleAddManual}>
-              <div className="task-input-wrap">
-                <span className="input-plus">+</span>
-                <input
-                  type="text"
-                  placeholder="What needs to get done?"
-                  value={newText}
-                  onChange={(event) => setNewText(event.target.value)}
-                  required
-                />
-              </div>
-              <div className="reminder-fields">
-                <label>
-                  <span>Remind me</span>
-                  <input
-                    type="datetime-local"
-                    value={newStart}
-                    onChange={(event) => setNewStart(event.target.value)}
-                    required
-                  />
-                </label>
-                <button type="submit" className="accent-btn" disabled={busy || !activeBoardId}>
-                  {busy ? "Pinning..." : "Pin post-it"}
-                </button>
-              </div>
-            </form>
-
-            <div className="dictation-strip">
-              <div className="dictation-copy">
-                <span className={listening ? "mic-orb listening" : "mic-orb"} aria-hidden="true">●</span>
-                <div>
-                  <strong>{listening ? "Listening now" : "Capture with your voice"}</strong>
-                  <span>Speak naturally and Karmex LTS will build your tasks.</span>
-                </div>
-              </div>
-              <div className="dictation-actions">
-                {transcript && (
-                  <button
-                    type="button"
-                    className="secondary-btn"
-                    onClick={submitDictation}
-                    disabled={busy || !activeBoardId}
-                  >
-                    Add transcript
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className={listening ? "voice-btn listening" : "voice-btn"}
-                  onClick={listening ? stop : start}
-                  disabled={!supported || busy || !activeBoardId}
-                >
-                  {listening ? "Stop" : "Start dictation"}
-                </button>
-              </div>
-            </div>
-
-            {transcript && <div className="transcript-box"><strong>Heard:</strong> {transcript}</div>}
-            {!supported && <p className="error-banner">Voice dictation is not supported in this browser. Try Chrome or Edge.</p>}
-            {dictationError && <p className="error-banner">Mic error: {dictationError}</p>}
-          </section>
 
           <section className="tasks-section whiteboard-section">
             <div className="section-title-row">
