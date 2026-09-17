@@ -1,4 +1,4 @@
 module.exports = {
-  TERMS_VERSION: "1.2",
-  PRIVACY_VERSION: "1.2",
+  TERMS_VERSION: "1.3",
+  PRIVACY_VERSION: "1.3",
 };

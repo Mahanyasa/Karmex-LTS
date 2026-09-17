@@ -9,6 +9,7 @@ const todoRoutes = require("./routes/todoRoutes");
 const googleRoutes = require("./routes/googleRoutes");
 const fileRoutes = require("./routes/fileRoutes");
 const githubRoutes = require("./routes/githubRoutes");
+const vaultRoutes = require("./routes/vaultRoutes");
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use("/api/todos", todoRoutes);
 app.use("/api/google", googleRoutes);
 app.use("/api/files", fileRoutes);
 app.use("/api/github", githubRoutes);
+app.use("/api/vault", vaultRoutes);
 
 const PORT = process.env.PORT || 3001;
 

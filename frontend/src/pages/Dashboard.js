@@ -6,6 +6,7 @@ import FileStorage from "../components/FileStorage";
 import Settings from "../components/Settings";
 import GitHubDashboard from "../components/GitHubDashboard";
 import BoardScratchpad from "../components/BoardScratchpad";
+import PasswordVault from "../components/PasswordVault";
 import { useNotifications } from "../context/NotificationContext";
 
 function formatDateTime(iso) {
@@ -419,6 +420,13 @@ export default function Dashboard() {
           </button>
           <button
             type="button"
+            className={activeView === "vault" ? "nav-link active" : "nav-link"}
+            onClick={() => setActiveView("vault")}
+          >
+            Vault
+          </button>
+          <button
+            type="button"
             className={activeView === "settings" ? "nav-link active" : "nav-link"}
             onClick={() => setActiveView("settings")}
           >
@@ -523,6 +531,8 @@ export default function Dashboard() {
 
         {activeView === "files" ? <FileStorage /> : activeView === "github" ? (
           <GitHubDashboard connected={githubConnected} connectGitHub={connectGitHub} boards={boards} activeBoardId={activeBoardId} />
+        ) : activeView === "vault" ? (
+          <PasswordVault />
         ) : activeView === "settings" ? (
           <Settings
             googleConnected={googleConnected}
