@@ -1,0 +1,18 @@
+.karmex-lts-fill-button {
+  width: 26px !important;
+  height: 26px !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  margin-left: -32px !important;
+  margin-right: 6px !important;
+  padding: 0 !important;
+  position: relative !important;
+  z-index: 2147483646 !important;
+  color: #101507 !important;
+  background: #b7f04a !important;
+  border: 0 !important;
+  border-radius: 5px !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.28) !important;
+  font: 900 11px/1 Arial, sans-serif !important;
+  cursor: pointer !important;
+}
