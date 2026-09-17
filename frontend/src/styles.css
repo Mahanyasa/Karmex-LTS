@@ -1398,6 +1398,17 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .activity-feed strong { font-size: 9px; text-transform: uppercase; }
 .activity-feed p { margin: 5px 0; color: var(--muted-strong); font-size: 10px; line-height: 1.45; }
 .activity-feed small { color: #77bde9; font-size: 7px; }
+.standards-panel { margin: 18px 0; padding: 20px; background: #0d1118; border: 1px solid var(--border); border-radius: 8px; }
+.standards-panel > header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 16px; }
+.standards-panel h2 { margin: 0 0 5px; font-size: 15px; }
+.standards-panel header span { color: var(--muted); font-size: 8px; }
+.standards-panel header > strong { color: var(--accent); font-size: 9px; text-transform: uppercase; }
+.standards-panel > div { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
+.standards-panel article { min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 13px; background: #10151d; }
+.standards-panel article.learned { box-shadow: inset 2px 0 var(--accent); }
+.standards-panel article span { overflow: hidden; color: var(--muted-strong); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.standards-panel article strong { font-size: 16px; }
+.standards-panel article small { color: var(--muted); font-size: 7px; }
 
 .public-profile-page { min-height: 100vh; background: var(--bg); }
 .profile-nav { height: 72px; display: flex; justify-content: space-between; align-items: center; padding: 0 clamp(20px, 5vw, 72px); border-bottom: 1px solid var(--border); }
@@ -1676,6 +1687,7 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   .individual-dashboard { padding: 18px; }
   .individual-dashboard > header { align-items: stretch; flex-direction: column; }
   .individual-dashboard select { width: 100%; }
+  .standards-panel > div { grid-template-columns: 1fr 1fr; }
   .calendar-days > div { min-height: 42px; }
   .board-task-table > div:not(.widget-empty) { grid-template-columns: 22px minmax(0, 1fr) 26px; }
   .board-task-table small { display: none; }

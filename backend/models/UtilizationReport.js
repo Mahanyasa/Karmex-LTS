@@ -8,6 +8,7 @@ const utilizationReportSchema = new mongoose.Schema({
     workingDays: { type: [Number], default: [1, 2, 3, 4, 5, 6] },
   },
   entries: [{
+    fingerprint: { type: String, required: true },
     member: { type: String, required: true, maxlength: 100 },
     date: { type: Date, required: true },
     classification: { type: String, default: "Unclassified", maxlength: 150 },
