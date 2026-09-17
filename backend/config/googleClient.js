@@ -4,11 +4,46 @@ const { google } = require("googleapis");
 // reminders). Does NOT request Gmail read/send access.
 const SCOPES = ["https://www.googleapis.com/auth/calendar.events"];
 
+function getRedirectUri() {
+  if (process.env.GOOGLE_REDIRECT_URI) {
+    return process.env.GOOGLE_REDIRECT_URI.trim();
+  }
+
+  const baseUrl = (process.env.APP_BASE_URL || "http://localhost:3001")
+    .trim()
+    .replace(/\/$/, "");
+
+  return `${baseUrl}/api/google/callback`;
+}
+
+function validateGoogleConfig() {
+  const missing = [];
+
+  if (!process.env.GOOGLE_CLIENT_ID) missing.push("GOOGLE_CLIENT_ID");
+  if (!process.env.GOOGLE_CLIENT_SECRET) missing.push("GOOGLE_CLIENT_SECRET");
+
+  if (missing.length) {
+    throw new Error(`Missing Google OAuth configuration: ${missing.join(", ")}`);
+  }
+
+  const redirectUri = getRedirectUri();
+
+  if (process.env.NODE_ENV === "production" && /localhost|127\.0\.0\.1/i.test(redirectUri)) {
+    throw new Error(
+      "Google OAuth callback cannot use localhost in production. Set APP_BASE_URL to the public backend URL."
+    );
+  }
+
+  return redirectUri;
+}
+
 function getOAuthClient() {
+  const redirectUri = validateGoogleConfig();
+
   return new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
+    redirectUri
   );
 }
 
@@ -56,4 +91,12 @@ function getClientForUser(user) {
   return client;
 }
 
-module.exports = { getOAuthClient, getAuthUrl, getClientForUser, SCOPES };
+module.exports = {
+  getOAuthClient,
+  getAuthUrl,
+  getClientForUser,
+  getRedirectUri,
+  validateGoogleConfig,
+  SCOPES,
+};
+

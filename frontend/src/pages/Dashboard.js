@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import api from "../api";
 import { useAuth } from "../context/AuthContext";
 import useDictation from "../components/useDictation";
+import FileStorage from "../components/FileStorage";
 
 function formatDateTime(iso) {
   if (!iso) return "";
@@ -35,6 +36,7 @@ export default function Dashboard() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [googleConnected, setGoogleConnected] = useState(false);
+  const [activeView, setActiveView] = useState("workspace");
 
   const activeBoard = boards.find((board) => board._id === activeBoardId);
   const completedCount = todos.filter((todo) => todo.completed).length;
@@ -324,8 +326,20 @@ export default function Dashboard() {
         </a>
 
         <div className="topbar-center">
-          <span className="nav-link active">Workspace</span>
-          <span className="nav-link">Boards</span>
+          <button
+            type="button"
+            className={activeView === "workspace" ? "nav-link active" : "nav-link"}
+            onClick={() => setActiveView("workspace")}
+          >
+            Workspace
+          </button>
+          <button
+            type="button"
+            className={activeView === "files" ? "nav-link active" : "nav-link"}
+            onClick={() => setActiveView("files")}
+          >
+            Files
+          </button>
         </div>
 
         <div className="account-actions">
@@ -346,8 +360,8 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <div className="dashboard-layout">
-        <aside className="sidebar">
+      <div className={activeView === "files" ? "dashboard-layout storage-layout" : "dashboard-layout"}>
+        {activeView === "workspace" && <aside className="sidebar">
           <div className="sidebar-heading">
             <span>Boards</span>
             <span className="count-badge">{boards.length}</span>
@@ -393,9 +407,9 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        </aside>
+        </aside>}
 
-        <main className="workspace">
+        {activeView === "files" ? <FileStorage /> : <main className="workspace">
           <header className="workspace-header">
             <div>
               <div className="eyebrow">CURRENT BOARD</div>
@@ -587,8 +601,9 @@ export default function Dashboard() {
               </div>
             )}
           </section>
-        </main>
+        </main>}
       </div>
     </div>
   );
 }
+

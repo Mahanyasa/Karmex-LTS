@@ -7,6 +7,7 @@ const authRoutes = require("./routes/authRoutes");
 const boardRoutes = require("./routes/boardRoutes");
 const todoRoutes = require("./routes/todoRoutes");
 const googleRoutes = require("./routes/googleRoutes");
+const fileRoutes = require("./routes/fileRoutes");
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/boards", boardRoutes);
 app.use("/api/todos", todoRoutes);
 app.use("/api/google", googleRoutes);
+app.use("/api/files", fileRoutes);
 
 const PORT = process.env.PORT || 3001;
 
@@ -38,3 +40,4 @@ connectDB().then(() => {
     console.log(`[server] Listening on port ${PORT}`);
   });
 });
+

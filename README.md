@@ -1,15 +1,15 @@
 # Daily Planner (MERN)
 
-Login-based to-do planner. Tasks reset/roll over daily at 9:00 AM, you can
-dictate tasks by voice (Web Speech API), and a local rule-based organizer
-sorts your day by mentioned time and priority — no external AI call.
+Login-based board planner with voice capture, Google Calendar reminders,
+and private S3 file storage. A local rule-based organizer sorts tasks by
+mentioned time and priority with no external AI call.
 
 ## Structure
 
 ```
 todo-mern/
-  backend/     Express + Mongoose API, JWT auth, node-cron 9am reset
-  frontend/    React app, login/register, dashboard, mic dictation
+  backend/     Express + Mongoose API, JWT auth, Google OAuth, private S3
+  frontend/    React app, boards, tasks, voice capture, file workspace
 ```
 
 ## How "listening" works
@@ -37,10 +37,12 @@ that uses "Sign in with Google."
    while the app is unverified.
 4. **APIs & Services → Credentials → Create Credentials → OAuth client ID**
    → type: Web application.
-   - Authorized redirect URI: `http://localhost:5000/api/google/callback`
+   - Local authorized redirect URI: `http://localhost:3001/api/google/callback`
      (or `https://yourdomain.com/api/google/callback` in production)
-5. Copy the generated Client ID and Client Secret into `backend/.env`:
-   `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`.
+5. Copy the Client ID and Client Secret into `backend/.env`. Set
+   `APP_BASE_URL=http://localhost:3001` locally. In production, use the
+   public HTTPS backend URL and register its exact `/api/google/callback`
+   URL in Google Cloud. Never use localhost for the production callback.
 6. On your phone, make sure the **Google Calendar app** is installed and
    notifications are enabled for it — that's what delivers the push.
 
@@ -65,7 +67,7 @@ reminder 10 minutes out.
 cd backend
 cp .env.example .env
 # edit .env: set MONGO_URI (Atlas string above), JWT_SECRET (random string),
-# CLIENT_ORIGIN (your frontend's public URL), RESET_TZ (e.g. Asia/Kolkata)
+# CLIENT_ORIGIN (your frontend's public URL), APP_BASE_URL (backend public URL)
 
 npm install
 npm start          # or: pm2 start ecosystem.config.js
@@ -85,14 +87,14 @@ pm2 startup     # follow the printed command to enable on reboot
 ```
 
 Open the port in your EC2 Security Group (inbound rule for PORT, default
-5000), or put Nginx in front of it as a reverse proxy on 80/443.
+3001), or put Nginx in front of it as a reverse proxy on 80/443.
 
 ## 3. Frontend setup
 
 ```bash
 cd frontend
 cp .env.example .env
-# edit .env: set REACT_APP_API_URL to http://<your-server>:5000/api
+# edit .env: set REACT_APP_API_URL to http://<your-server>:3001/api
 # (or https://yourdomain.com/api if behind Nginx + SSL)
 
 npm install
@@ -104,7 +106,41 @@ Vercel, Netlify). Voice dictation (Web Speech API) requires HTTPS in
 production — plan for an SSL cert (e.g. via Let's Encrypt + Nginx, or
 CloudFront) before relying on the mic button on your real domain.
 
-## 4. Test it
+## 4. Private S3 file storage
+
+Create an S3 bucket with **Block all public access** enabled. Set these in
+`backend/.env`:
+
+```bash
+AWS_REGION=ap-south-1
+AWS_S3_BUCKET=your-private-bucket-name
+```
+
+On EC2, attach an IAM role that allows `s3:ListBucket`, `s3:GetObject`,
+`s3:PutObject`, and `s3:DeleteObject` for that bucket. For local development,
+use the standard AWS SDK environment variables `AWS_ACCESS_KEY_ID` and
+`AWS_SECRET_ACCESS_KEY`.
+
+Direct browser uploads require this S3 bucket CORS configuration. Replace
+the origins with your development and production frontend URLs:
+
+```json
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "PUT"],
+    "AllowedOrigins": ["http://localhost:3000", "https://your-frontend.example.com"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
+
+Every object is stored under `users/<authenticated-user-id>/`. Upload and
+download links expire quickly, and the bucket itself remains private. Files
+without a selected folder are automatically sorted by type.
+
+## 5. Test it
 
 - Visit the frontend URL → Sign up → you're logged in with a JWT stored
   in localStorage.
@@ -112,9 +148,8 @@ CloudFront) before relying on the mic button on your real domain.
   finish report urgent for 1 hour, and buy groceries"* → Stop → "Add &
   organize".
 - Tasks appear sorted: timed tasks first (by time), then by priority.
-- The 9:00 AM cron job (`backend/cron/dailyReset.js`) runs daily in the
-  `RESET_TZ` timezone and rolls incomplete tasks into the new day's
-  bucket; completed tasks stay archived under their original date.
+- Open **Files**, upload a file, and confirm it appears in the matching
+  automatic folder. Download and delete actions use private signed URLs.
 
 ## Notes on the "AI organize" step
 
@@ -125,3 +160,4 @@ and has no third-party dependency or ToS risk. If you ever want to swap
 in a real AI call later, that file is the single place to change —
 replace `organizeTasks`/`parseDictation` with an API request and keep the
 same return shape.
+

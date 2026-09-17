@@ -9,13 +9,18 @@ const router = express.Router();
 // GET /api/google/auth-url - returns the Google consent screen URL
 // (frontend redirects the browser here; requires login first)
 router.get("/auth-url", auth, (req, res) => {
-  // Short-lived signed state token so /callback knows which user this is,
-  // without trusting a raw userId passed through the browser.
-  const state = jwt.sign({ userId: req.userId }, process.env.JWT_SECRET, {
-    expiresIn: "10m",
-  });
-  const url = getAuthUrl(state);
-  res.json({ url });
+  try {
+    // Short-lived signed state token so /callback knows which user this is,
+    // without trusting a raw userId passed through the browser.
+    const state = jwt.sign({ userId: req.userId }, process.env.JWT_SECRET, {
+      expiresIn: "10m",
+    });
+    const url = getAuthUrl(state);
+    res.json({ url });
+  } catch (err) {
+    console.error("[google] OAuth configuration error:", err.message);
+    res.status(503).json({ message: err.message });
+  }
 });
 
 // GET /api/google/callback - Google redirects here after consent.
@@ -23,7 +28,10 @@ router.get("/auth-url", auth, (req, res) => {
 // the signed `state` param authenticates which user this belongs to.
 router.get("/callback", async (req, res) => {
   const { code, state, error } = req.query;
-  const frontendUrl = (process.env.CLIENT_ORIGIN || "").split(",")[0];
+  const frontendUrl = (process.env.CLIENT_ORIGIN || "http://localhost:3000")
+    .split(",")[0]
+    .trim()
+    .replace(/\/$/, "");
 
   if (error) {
     return res.redirect(`${frontendUrl}/?google=denied`);
@@ -74,3 +82,4 @@ router.post("/disconnect", auth, async (req, res) => {
 });
 
 module.exports = router;
+
