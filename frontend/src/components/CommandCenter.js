@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from "react";
 import api from "../api";
 
-export default function CommandCenter({ user, boards, githubConnected, onNavigate, onBoard, onPalette }) {
+const MODE_COPY = {
+  focus: ["FOCUS CONTROL", "Current work, deadlines, and completion signal with secondary telemetry reduced."],
+  sprint: ["SPRINT REVIEW", "Sprint health, delivery flow, and engineering activity across every planning board."],
+  team: ["TEAM OPERATIONS", "Capacity, blockers, ownership, and team delivery signals in one operational view."],
+  briefing: ["DAILY BRIEFING", "Unified operational status across planning, engineering, resources, and private systems."],
+};
+
+export default function CommandCenter({ user, boards, githubConnected, mode = "briefing", onModeChange, onNavigate, onBoard, onPalette }) {
   const [allTodos, setAllTodos] = useState([]); const [utilization, setUtilization] = useState(null); const [github, setGithub] = useState(null); const [loading, setLoading] = useState(true);
   useEffect(() => {
     let live = true;
@@ -18,8 +25,10 @@ export default function CommandCenter({ user, boards, githubConnected, onNavigat
   const blocked = open.filter((todo) => todo.blockedReason); const overdue = open.filter((todo) => todo.reminderDateTime && new Date(todo.reminderDateTime) < new Date());
   const timeline = open.filter((todo) => todo.reminderDateTime).sort((a, b) => new Date(a.reminderDateTime) - new Date(b.reminderDateTime)).slice(0, 8);
   const repositories = github?.repositories || []; const openIssues = repositories.reduce((sum, repo) => sum + repo.openIssues, 0);
-  return <main className="command-center">
-    <header className="command-center-header"><div><span className="eyebrow">MISSION CONTROL</span><h1>Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening"}, {user?.name?.split(" ")[0] || "Operator"}</h1><p>Unified operational status across planning, engineering, resources, and private systems.</p></div><button type="button" className="command-launch" onClick={onPalette}><span>⌘</span><strong>Run command</strong><kbd>Ctrl K</kbd></button></header>
+  const modeCopy = MODE_COPY[mode] || MODE_COPY.briefing;
+  return <main className={`command-center mode-${mode}`}>
+    <header className="command-center-header"><div><span className="eyebrow">{modeCopy[0]}</span><h1>Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening"}, {user?.name?.split(" ")[0] || "Operator"}</h1><p>{modeCopy[1]}</p></div><button type="button" className="command-launch" onClick={onPalette}><span>⌘</span><strong>Run command</strong><kbd>Ctrl K</kbd></button></header>
+    <nav className="mode-switcher" aria-label="Personal operating mode">{Object.entries(MODE_COPY).map(([key, copy]) => <button key={key} type="button" className={mode === key ? "active" : ""} onClick={() => onModeChange(key)}><i />{copy[0]}</button>)}</nav>
     <section className="system-strip"><span><i className="online" /> Core online</span><span><i className={githubConnected ? "online" : "warning"} /> GitHub {githubConnected ? "linked" : "offline"}</span><span><i className={utilization ? "online" : "warning"} /> Resource data {utilization ? "ready" : "pending"}</span><time>{new Date().toLocaleString()}</time></section>
     <section className="mission-kpis"><Metric label="Open work" value={open.length} detail={overdue.length + " overdue"} tone={overdue.length ? "danger" : ""} /><Metric label="Active sprints" value={activeSprints.length} detail={boards.length + " planning boards"} /><Metric label="Blocked" value={blocked.length} detail="Requires intervention" tone={blocked.length ? "warning" : ""} /><Metric label="GitHub issues" value={githubConnected ? openIssues : "--"} detail={repositories.length + " repositories"} /></section>
     <section className="mission-grid"><article className="mission-panel delivery-core"><PanelHead code="OPS-01" title="Delivery core" action="Workspace" onClick={() => onNavigate("workspace")} /><div className="delivery-orbit"><div className="orbit-ring" style={{ "--mission-progress": progress * 3.6 + "deg" }}><div><strong>{progress}%</strong><span>COMPLETE</span></div></div><div className="delivery-stats"><div><span>Completed</span><strong>{completed}</strong></div><div><span>Remaining</span><strong>{open.length}</strong></div><div><span>Blocked</span><strong>{blocked.length}</strong></div></div></div><div className="active-sprint-list">{activeSprints.map((sprint) => <button type="button" key={sprint._id} onClick={() => onBoard(sprint.boardId)}><span>{sprint.boardName}</span><strong>{sprint.name}</strong><small>{new Date(sprint.endDate).toLocaleDateString()} target</small></button>)}{!activeSprints.length && <p>No active sprint detected</p>}</div></article>

@@ -37,6 +37,9 @@ const userSchema = new mongoose.Schema(
       privacyVersion: { type: String, default: null },
       acceptedAt: { type: Date, default: null },
     },
+    preferences: {
+      operatingMode: { type: String, enum: ["focus", "sprint", "team", "briefing"], default: "briefing" },
+    },
     // OAuth tokens for the user's OWN Google account, obtained via consent
     // screen (never their password). Used to create Calendar reminder events.
     googleTokens: {

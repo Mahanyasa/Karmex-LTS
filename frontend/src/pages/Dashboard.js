@@ -11,6 +11,7 @@ import ResourceUtilization from "../components/ResourceUtilization";
 import CommandCenter from "../components/CommandCenter";
 import CommandPalette from "../components/CommandPalette";
 import AssistantPanel from "../components/AssistantPanel";
+import BriefingPresentation from "../components/BriefingPresentation";
 import useProactiveIntelligence from "../components/useProactiveIntelligence";
 import { useNotifications } from "../context/NotificationContext";
 
@@ -27,7 +28,7 @@ function formatDateTime(iso) {
 }
 
 export default function Dashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, updatePreferences } = useAuth();
   const { notify, confirm } = useNotifications();
   const [boards, setBoards] = useState([]);
   const [activeBoardId, setActiveBoardId] = useState("");
@@ -45,6 +46,9 @@ export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [commandOpen, setCommandOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(true);
+  const initialMode = user?.preferences?.operatingMode || "briefing";
+  const [operatingMode, setOperatingMode] = useState(initialMode);
+  const [showBriefing, setShowBriefing] = useState(() => sessionStorage.getItem(`karmex-briefed-${initialMode}`) !== "1");
 
   const activeBoard = boards.find((board) => board._id === activeBoardId);
   const intelligence = useProactiveIntelligence({ board: activeBoard, todos, githubConnected });
@@ -60,6 +64,19 @@ export default function Dashboard() {
   const handleScratchpadSaved = React.useCallback((savedBoard) => {
     setBoards((current) => current.map((board) => board._id === savedBoard._id ? savedBoard : board));
   }, []);
+  const closeBriefing = React.useCallback(() => setShowBriefing(false), []);
+
+  async function changeOperatingMode(mode) {
+    if (mode === operatingMode) return;
+    try {
+      await updatePreferences({ operatingMode: mode });
+      setOperatingMode(mode);
+      setActiveView("command");
+      setShowBriefing(true);
+    } catch (err) {
+      setMessage(err.response?.data?.message || "Failed to update operating mode");
+    }
+  }
 
   const nextTask = useMemo(
     () =>
@@ -551,7 +568,7 @@ export default function Dashboard() {
           </div>
         </aside>}
 
-        {activeView === "command" ? <CommandCenter user={user} boards={boards} githubConnected={githubConnected} onNavigate={setActiveView} onBoard={openBoardFromCommand} onPalette={() => setCommandOpen(true)} /> : activeView === "files" ? <FileStorage /> : activeView === "github" ? (
+        {activeView === "command" ? <CommandCenter user={user} boards={boards} githubConnected={githubConnected} mode={operatingMode} onModeChange={changeOperatingMode} onNavigate={setActiveView} onBoard={openBoardFromCommand} onPalette={() => setCommandOpen(true)} /> : activeView === "files" ? <FileStorage /> : activeView === "github" ? (
           <GitHubDashboard connected={githubConnected} connectGitHub={connectGitHub} boards={boards} activeBoardId={activeBoardId} />
         ) : activeView === "utilization" ? (
           <ResourceUtilization />
@@ -592,6 +609,7 @@ export default function Dashboard() {
       </div>
       <AssistantPanel open={assistantOpen} onClose={() => setAssistantOpen(false)} activeView={activeView} board={activeBoard} todos={todos} alerts={intelligence.alerts} onDismiss={intelligence.dismiss} onNavigate={setActiveView} />
       <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} boards={boards} onView={setActiveView} onBoard={openBoardFromCommand} onAssistant={() => setAssistantOpen((value) => !value)} />
+      {showBriefing && <BriefingPresentation mode={operatingMode} user={user} boards={boards} activeBoard={activeBoard} githubConnected={githubConnected} onComplete={closeBriefing} />}
     </div>
   );
 }

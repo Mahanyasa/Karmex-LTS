@@ -49,8 +49,15 @@ export function AuthProvider({ children }) {
     return data;
   }
 
+  async function updatePreferences(preferences) {
+    const { data } = await api.patch("/auth/preferences", preferences);
+    localStorage.setItem("user", JSON.stringify(data));
+    setUser(data);
+    return data;
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateProfile, updatePreferences }}>
       {children}
     </AuthContext.Provider>
   );

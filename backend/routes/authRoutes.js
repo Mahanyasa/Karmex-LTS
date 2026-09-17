@@ -73,7 +73,7 @@ router.post("/register", async (req, res) => {
 
     res.status(201).json({
       token,
-      user: { id: user._id, name: user.name, username: user.username, email: user.email, avatar: user.avatar, profile: user.profile },
+      user: { id: user._id, name: user.name, username: user.username, email: user.email, avatar: user.avatar, profile: user.profile, preferences: user.preferences },
     });
   } catch (err) {
     console.error(err);
@@ -107,7 +107,7 @@ router.post("/login", async (req, res) => {
     const token = signToken(user._id);
     res.json({
       token,
-      user: { id: user._id, name: user.name, username: user.username, email: user.email, avatar: user.avatar, profile: user.profile },
+      user: { id: user._id, name: user.name, username: user.username, email: user.email, avatar: user.avatar, profile: user.profile, preferences: user.preferences },
     });
   } catch (err) {
     console.error(err);
@@ -173,10 +173,24 @@ router.patch("/profile", auth, async (req, res) => {
       email: user.email,
       avatar: user.avatar,
       profile: user.profile,
+      preferences: user.preferences,
     });
   } catch (err) {
     console.error("Update profile error:", err);
     res.status(500).json({ message: "Failed to update profile" });
+  }
+});
+
+router.patch("/preferences", auth, async (req, res) => {
+  try {
+    const operatingMode = String(req.body.operatingMode || "");
+    if (!["focus", "sprint", "team", "briefing"].includes(operatingMode)) return res.status(400).json({ message: "Invalid operating mode" });
+    const user = await User.findByIdAndUpdate(req.userId, { "preferences.operatingMode": operatingMode }, { new: true, runValidators: true });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({ id: user._id, name: user.name, username: user.username, email: user.email, avatar: user.avatar, profile: user.profile, preferences: user.preferences });
+  } catch (err) {
+    console.error("Update preferences error:", err);
+    res.status(500).json({ message: "Failed to update operating mode" });
   }
 });
 
