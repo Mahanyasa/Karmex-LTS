@@ -1,5 +1,7 @@
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.set({ apiUrl: "http://localhost:3001/api" });
+  chrome.storage.local.get("apiUrl").then(({ apiUrl }) => {
+    if (!apiUrl) chrome.storage.local.set({ apiUrl: "http://localhost:3001/api/v1" });
+  });
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {

@@ -15,7 +15,7 @@ function message(text) {
 }
 
 async function settings() {
-  return chrome.storage.local.get({ apiUrl: "http://localhost:3001/api" });
+  return chrome.storage.local.get({ apiUrl: "http://localhost:3001/api/v1" });
 }
 
 async function api(path, options = {}) {

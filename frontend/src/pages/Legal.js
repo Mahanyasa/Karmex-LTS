@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { LEGAL_EFFECTIVE_DATE, PRIVACY_VERSION, TERMS_VERSION } from "../legalVersions";
+import { API_VERSION, APP_VERSION } from "../version";
 
 function LegalLayout({ title, summary, version, children }) {
   return (
@@ -17,7 +18,7 @@ function LegalLayout({ title, summary, version, children }) {
           <span className="eyebrow">KARMEX CORP PVT LTD.</span>
           <h1>{title}</h1>
           <p>{summary}</p>
-          <div className="legal-meta"><span>Version {version}</span><span>Effective {LEGAL_EFFECTIVE_DATE}</span><span>Karmex LTS service</span></div>
+          <div className="legal-meta"><span>Policy {version}</span><span>Effective {LEGAL_EFFECTIVE_DATE}</span><span>App {APP_VERSION}</span><span>API {API_VERSION}</span></div>
         </header>
         <div className="legal-body">{children}</div>
         <footer className="legal-footer">

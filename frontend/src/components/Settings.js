@@ -4,6 +4,7 @@ import api from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationContext";
 import SocialPanel from "./SocialPanel";
+import { API_VERSION, APP_VERSION } from "../version";
 
 function resizeAvatar(file) {
   return new Promise((resolve, reject) => {
@@ -171,7 +172,7 @@ export default function Settings({ googleConnected, connectGoogle, disconnectGoo
         <SocialPanel boards={boards} reloadBoards={reloadBoards} />
 
         <section className="settings-panel session-panel">
-          <div><span className="eyebrow">SESSION</span><h2>Account access</h2><p>Sign out of Karmex LTS on this device.</p></div>
+          <div><span className="eyebrow">SESSION</span><h2>Account access</h2><p>Sign out of Karmex LTS on this device.</p><span className="app-version">Karmex LTS {APP_VERSION} · API {API_VERSION}</span></div>
           <div className="session-actions"><div className="settings-legal-links"><Link to="/privacy">Privacy Policy</Link><Link to="/terms">Terms & Conditions</Link></div><button type="button" className="danger-btn" onClick={logout}>Log out</button></div>
         </section>
       </div>

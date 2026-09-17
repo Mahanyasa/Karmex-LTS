@@ -94,7 +94,7 @@ Open the port in your EC2 Security Group (inbound rule for PORT, default
 ```bash
 cd frontend
 cp .env.example .env
-# edit .env: set REACT_APP_API_URL to http://<your-server>:3001/api
+# edit .env: set REACT_APP_API_URL to http://<your-server>:3001/api/v1
 # (or https://yourdomain.com/api if behind Nginx + SSL)
 
 npm install

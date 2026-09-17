@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Karmex LTS Autofill",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Securely fill credentials from your client-encrypted Karmex LTS vault.",
   "permissions": ["storage", "activeTab", "alarms"],
   "host_permissions": ["<all_urls>"],

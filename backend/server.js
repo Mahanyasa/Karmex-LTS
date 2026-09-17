@@ -11,6 +11,7 @@ const fileRoutes = require("./routes/fileRoutes");
 const githubRoutes = require("./routes/githubRoutes");
 const vaultRoutes = require("./routes/vaultRoutes");
 const socialRoutes = require("./routes/socialRoutes");
+const { API_VERSION, APP_VERSION } = require("./config/version");
 
 const app = express();
 
@@ -26,18 +27,37 @@ app.use(
 );
 app.use(express.json({ limit: "1mb" }));
 
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", time: new Date().toISOString() });
+app.use((req, res, next) => {
+  res.setHeader("X-Karmex-API-Version", API_VERSION);
+  res.setHeader("X-Karmex-App-Version", APP_VERSION);
+  next();
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/boards", boardRoutes);
-app.use("/api/todos", todoRoutes);
-app.use("/api/google", googleRoutes);
-app.use("/api/files", fileRoutes);
-app.use("/api/github", githubRoutes);
-app.use("/api/vault", vaultRoutes);
-app.use("/api/social", socialRoutes);
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", apiVersion: API_VERSION, appVersion: APP_VERSION, time: new Date().toISOString() });
+});
+
+app.get(`/api/${API_VERSION}/health`, (req, res) => {
+  res.json({ status: "ok", apiVersion: API_VERSION, appVersion: APP_VERSION, time: new Date().toISOString() });
+});
+
+app.get(`/api/${API_VERSION}/version`, (req, res) => {
+  res.json({ product: "Karmex LTS", apiVersion: API_VERSION, appVersion: APP_VERSION });
+});
+
+function mountApi(prefix) {
+  app.use(`${prefix}/auth`, authRoutes);
+  app.use(`${prefix}/boards`, boardRoutes);
+  app.use(`${prefix}/todos`, todoRoutes);
+  app.use(`${prefix}/google`, googleRoutes);
+  app.use(`${prefix}/files`, fileRoutes);
+  app.use(`${prefix}/github`, githubRoutes);
+  app.use(`${prefix}/vault`, vaultRoutes);
+  app.use(`${prefix}/social`, socialRoutes);
+}
+
+mountApi(`/api/${API_VERSION}`);
+mountApi("/api");
 
 const PORT = process.env.PORT || 3001;
 

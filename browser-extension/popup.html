@@ -3,7 +3,7 @@
 <body>
   <header><span class="mark">KL</span><div><strong>Karmex LTS</strong><small>Password autofill</small></div><button id="settingsButton" title="Connection settings">⚙</button></header>
   <main>
-    <section id="settingsView" class="hidden"><h1>Connection</h1><label>API URL<input id="apiUrl" placeholder="https://your-domain/api"></label><button id="saveSettings" class="primary">Save connection</button></section>
+    <section id="settingsView" class="hidden"><h1>Connection</h1><label>API URL<input id="apiUrl" placeholder="https://your-domain/api/v1"></label><button id="saveSettings" class="primary">Save connection</button></section>
     <section id="loginView" class="hidden"><span class="eyebrow">SIGN IN</span><h1>Connect your vault</h1><form id="loginForm"><label>Email<input id="email" type="email" required></label><label>Account password<input id="accountPassword" type="password" required></label><button class="primary" type="submit">Sign in</button></form></section>
     <section id="unlockView" class="hidden"><span class="eyebrow">ENCRYPTED VAULT</span><h1>Unlock to fill</h1><form id="unlockForm"><label>Master password<input id="masterPassword" type="password" minlength="12" required></label><button class="primary" type="submit">Unlock vault</button></form><button id="signOutButton" class="text-button">Sign out</button></section>
     <section id="entriesView" class="hidden"><div class="context"><span id="siteName">Current site</span><button id="lockButton" class="text-button">Lock</button></div><input id="search" type="search" placeholder="Search vault"><div id="entries"></div></section>
