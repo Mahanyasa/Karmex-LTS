@@ -1,6 +1,7 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const auth = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -31,7 +32,7 @@ router.post("/register", async (req, res) => {
 
     res.status(201).json({
       token,
-      user: { id: user._id, name: user.name, email: user.email },
+      user: { id: user._id, name: user.name, email: user.email, avatar: user.avatar },
     });
   } catch (err) {
     console.error(err);
@@ -60,7 +61,7 @@ router.post("/login", async (req, res) => {
     const token = signToken(user._id);
     res.json({
       token,
-      user: { id: user._id, name: user.name, email: user.email },
+      user: { id: user._id, name: user.name, email: user.email, avatar: user.avatar },
     });
   } catch (err) {
     console.error(err);
@@ -68,4 +69,43 @@ router.post("/login", async (req, res) => {
   }
 });
 
+router.patch("/profile", auth, async (req, res) => {
+  try {
+    const name = String(req.body.name || "").trim();
+    const avatar = req.body.avatar || null;
+
+    if (!name || name.length > 80) {
+      return res.status(400).json({ message: "Name must be between 1 and 80 characters" });
+    }
+
+    if (
+      avatar &&
+      (typeof avatar !== "string" ||
+        avatar.length > 750000 ||
+        !/^data:image\/(jpeg|png|webp);base64,/i.test(avatar))
+    ) {
+      return res.status(400).json({ message: "Profile image must be a valid JPG, PNG, or WebP" });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { name, avatar },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+    });
+  } catch (err) {
+    console.error("Update profile error:", err);
+    res.status(500).json({ message: "Failed to update profile" });
+  }
+});
+
 module.exports = router;
+

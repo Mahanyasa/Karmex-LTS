@@ -2,6 +2,7 @@ const express = require("express");
 const { randomUUID } = require("crypto");
 const {
   S3Client,
+  HeadBucketCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   ListObjectsV2Command,
@@ -69,6 +70,20 @@ function displayName(key) {
   const storedName = key.split("/").pop() || "";
   return storedName.replace(/^[0-9a-f-]{36}-/, "");
 }
+
+router.get("/status", auth, async (req, res) => {
+  try {
+    const { bucket, client } = getS3Config();
+    await client.send(new HeadBucketCommand({ Bucket: bucket }));
+    res.json({ connected: true, bucket, region: process.env.AWS_REGION });
+  } catch (err) {
+    console.error("[files] Storage status failed:", err.message);
+    res.status(503).json({
+      connected: false,
+      message: err.message || "Storage connection failed",
+    });
+  }
+});
 
 router.get("/", auth, async (req, res) => {
   try {

@@ -3,6 +3,7 @@ import api from "../api";
 import { useAuth } from "../context/AuthContext";
 import useDictation from "../components/useDictation";
 import FileStorage from "../components/FileStorage";
+import Settings from "../components/Settings";
 
 function formatDateTime(iso) {
   if (!iso) return "";
@@ -346,27 +347,29 @@ export default function Dashboard() {
           >
             Files
           </button>
+          <button
+            type="button"
+            className={activeView === "settings" ? "nav-link active" : "nav-link"}
+            onClick={() => setActiveView("settings")}
+          >
+            Settings
+          </button>
         </div>
 
         <div className="account-actions">
-          <button
-            type="button"
-            className={googleConnected ? "integration-btn connected" : "integration-btn"}
-            onClick={googleConnected ? disconnectGoogle : connectGoogle}
-          >
-            <span className="status-dot" />
-            {googleConnected ? "Google connected" : "Connect Google"}
+          <button type="button" className="navbar-profile" onClick={() => setActiveView("settings")} title="Open settings">
+            <span className="user-avatar">
+              {user?.avatar ? <img src={user.avatar} alt="" /> : (user?.name || "U").charAt(0).toUpperCase()}
+            </span>
+            <span className="navbar-profile-name">{user?.name || "Account"}</span>
           </button>
-          <span className="user-avatar" title={user?.name || "Account"}>
-            {(user?.name || "U").charAt(0).toUpperCase()}
-          </span>
           <button type="button" className="icon-btn logout-btn" onClick={logout} title="Log out">
             <span aria-hidden="true">↗</span>
           </button>
         </div>
       </nav>
 
-      <div className={activeView === "files" ? "dashboard-layout storage-layout" : "dashboard-layout"}>
+      <div className={activeView !== "workspace" ? "dashboard-layout storage-layout" : "dashboard-layout"}>
         {activeView === "workspace" && <aside className="sidebar">
           <div className="sidebar-heading">
             <span>Boards</span>
@@ -416,7 +419,7 @@ export default function Dashboard() {
           <div className="sidebar-footer">
             <div className="profile-row">
               <span className="user-avatar small">
-                {(user?.name || "U").charAt(0).toUpperCase()}
+                {user?.avatar ? <img src={user.avatar} alt="" /> : (user?.name || "U").charAt(0).toUpperCase()}
               </span>
               <div>
                 <strong>{user?.name || "Your account"}</strong>
@@ -426,7 +429,13 @@ export default function Dashboard() {
           </div>
         </aside>}
 
-        {activeView === "files" ? <FileStorage /> : <main className="workspace">
+        {activeView === "files" ? <FileStorage /> : activeView === "settings" ? (
+          <Settings
+            googleConnected={googleConnected}
+            connectGoogle={connectGoogle}
+            disconnectGoogle={disconnectGoogle}
+          />
+        ) : <main className="workspace">
           <header className="workspace-header">
             <div>
               <div className="eyebrow">CURRENT BOARD</div>

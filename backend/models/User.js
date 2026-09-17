@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     password: { type: String, required: true, minlength: 6 },
+    avatar: { type: String, default: null, maxlength: 750000 },
     // OAuth tokens for the user's OWN Google account, obtained via consent
     // screen (never their password). Used to create Calendar reminder events.
     googleTokens: {
@@ -38,3 +39,4 @@ userSchema.methods.comparePassword = function (candidate) {
 };
 
 module.exports = mongoose.model("User", userSchema);
+

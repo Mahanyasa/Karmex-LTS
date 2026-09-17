@@ -40,8 +40,15 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
+  async function updateProfile(profile) {
+    const { data } = await api.patch("/auth/profile", profile);
+    localStorage.setItem("user", JSON.stringify(data));
+    setUser(data);
+    return data;
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );
@@ -50,3 +57,4 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   return useContext(AuthContext);
 }
+
