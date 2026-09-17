@@ -78,6 +78,14 @@ const todoSchema = new mongoose.Schema(
       repository: { type: String, default: null },
       issueNumber: { type: Number, default: null },
     },
+
+    sprint: { type: mongoose.Schema.Types.ObjectId, default: null, index: true },
+    workflowStage: { type: String, default: "To do", maxlength: 60 },
+    workType: { type: String, enum: ["story", "task", "bug", "spike"], default: "task" },
+    storyPoints: { type: Number, min: 0, max: 100, default: 0 },
+    labels: { type: [String], default: [] },
+    acceptanceCriteria: { type: String, default: "", maxlength: 5000 },
+    blockedReason: { type: String, default: "", maxlength: 1000 },
   },
   {
     timestamps: true,

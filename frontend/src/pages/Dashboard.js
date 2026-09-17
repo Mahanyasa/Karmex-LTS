@@ -560,7 +560,7 @@ export default function Dashboard() {
             </button>
           </header>
 
-          <DynamicBoard board={activeBoard} todos={todos} loading={loading} canEdit={canEditBoard} onToggle={handleToggle} onDelete={handleDelete} onBoardSaved={handleScratchpadSaved} />
+          <DynamicBoard board={activeBoard} todos={todos} loading={loading} canEdit={canEditBoard} onToggle={handleToggle} onDelete={handleDelete} onBoardSaved={handleScratchpadSaved} onTodosChanged={() => loadTodos(activeBoardId)} />
         </main>}
       </div>
     </div>

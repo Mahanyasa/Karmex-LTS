@@ -1,18 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "../api";
 import BoardScratchpad from "./BoardScratchpad";
+import SprintWorkspace from "./SprintWorkspace";
 import { useNotifications } from "../context/NotificationContext";
 
 const DEFAULT_LAYOUT = [
   { id: "metrics", width: 6, height: 1, visible: true },
   { id: "progress", width: 6, height: 1, visible: true },
+  { id: "sprints", width: 12, height: 6, visible: true },
   { id: "calendar", width: 8, height: 4, visible: true },
   { id: "upcoming", width: 4, height: 4, visible: true },
   { id: "workspace", width: 12, height: 6, visible: true },
   { id: "tasks", width: 12, height: 4, visible: true },
 ];
 
-const TITLES = { metrics: "Board metrics", progress: "Completion", calendar: "Calendar", upcoming: "Upcoming", workspace: "Notes & scratchpad", tasks: "Tasks" };
+const TITLES = { metrics: "Board metrics", progress: "Completion", sprints: "Sprint planning & delivery", calendar: "Calendar", upcoming: "Upcoming", workspace: "Notes & scratchpad", tasks: "Tasks" };
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const dayKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
@@ -24,7 +26,7 @@ function normalizeLayout(saved = []) {
   }).sort((a, b) => a.order - b.order);
 }
 
-export default function DynamicBoard({ board, todos, loading, canEdit, onToggle, onDelete, onBoardSaved }) {
+export default function DynamicBoard({ board, todos, loading, canEdit, onToggle, onDelete, onBoardSaved, onTodosChanged }) {
   const { notify } = useNotifications();
   const [layout, setLayout] = useState(() => normalizeLayout(board?.dashboardLayout));
   const [customizing, setCustomizing] = useState(false);
@@ -79,6 +81,7 @@ export default function DynamicBoard({ board, todos, loading, canEdit, onToggle,
   const renderWidget = (id) => ({
     metrics: <Metrics todos={todos} completed={completed} upcoming={upcoming} />,
     progress: <Progress value={progress} completed={completed} total={todos.length} />,
+    sprints: <SprintWorkspace board={board} todos={todos} canEdit={canEdit} onBoardSaved={onBoardSaved} onTodosChanged={onTodosChanged} />,
     calendar: <Calendar month={month} setMonth={setMonth} events={calendarEvents} />,
     upcoming: <Upcoming todos={upcoming} />,
     workspace: canEdit ? <BoardScratchpad board={board} onSaved={onBoardSaved} /> : <ReadOnlyNotice board={board} />,

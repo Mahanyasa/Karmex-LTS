@@ -576,6 +576,11 @@ router.patch("/:id", async (req, res) => {
       "completed",
       "timeHint",
       "duration",
+      "workType",
+      "storyPoints",
+      "acceptanceCriteria",
+      "blockedReason",
+      "workflowStage",
     ];
 
     allowedFields.forEach((key) => {
@@ -583,6 +588,8 @@ router.patch("/:id", async (req, res) => {
         updates[key] = req.body[key];
       }
     });
+
+    if (req.body.labels !== undefined) updates.labels = Array.isArray(req.body.labels) ? req.body.labels.map((label) => String(label).trim()).filter(Boolean).slice(0, 12) : [];
 
     if (req.body.boardId !== undefined) {
       const board = await resolveBoard(req.userId, req.body.boardId, true);
@@ -645,6 +652,19 @@ router.patch("/:id", async (req, res) => {
       return res.status(404).json({
         message: "Todo not found",
       });
+    }
+
+    if (req.body.sprintId !== undefined) {
+      if (req.body.sprintId === null || req.body.sprintId === "") {
+        updates.sprint = null;
+        updates.workflowStage = "To do";
+      } else {
+        const sprintBoard = await Board.findOne({ _id: existingTodo.board, user: req.userId, "sprints._id": req.body.sprintId });
+        if (!sprintBoard) return res.status(404).json({ message: "Sprint not found" });
+        updates.sprint = req.body.sprintId;
+        const sprint = sprintBoard.sprints.id(req.body.sprintId);
+        if (!sprint.stages.includes(updates.workflowStage)) updates.workflowStage = sprint.stages[0];
+      }
     }
 
     /* -----------------------------

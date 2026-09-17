@@ -210,7 +210,7 @@ router.patch("/:id/notes", async (req, res) => {
 
 router.patch("/:id/layout", async (req, res) => {
   try {
-    const allowedWidgets = new Set(["metrics", "calendar", "workspace", "tasks", "upcoming", "progress"]);
+    const allowedWidgets = new Set(["metrics", "sprints", "calendar", "workspace", "tasks", "upcoming", "progress"]);
     if (!Array.isArray(req.body.layout)) return res.status(400).json({ message: "Layout must be an array" });
     const seen = new Set();
     const layout = req.body.layout.slice(0, 12).map((item, index) => {
@@ -232,6 +232,63 @@ router.patch("/:id/layout", async (req, res) => {
     if (err.message === "Invalid dashboard widget") return res.status(400).json({ message: err.message });
     console.error("Save board layout error:", err.message);
     res.status(500).json({ message: "Failed to save board layout" });
+  }
+});
+
+router.post("/:id/sprints", async (req, res) => {
+  try {
+    const board = await Board.findOne({ _id: req.params.id, user: req.userId });
+    if (!board) return res.status(404).json({ message: "Board not found" });
+    const name = String(req.body.name || "").trim();
+    const startDate = new Date(req.body.startDate);
+    const endDate = new Date(req.body.endDate);
+    const stages = [...new Set((req.body.stages || []).map((stage) => String(stage).trim()).filter(Boolean))].slice(0, 8);
+    if (!name || Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) {
+      return res.status(400).json({ message: "A name and valid sprint dates are required" });
+    }
+    if (stages.length < 2) return res.status(400).json({ message: "Add at least two workflow stages" });
+    board.sprints.push({ name, goal: String(req.body.goal || "").trim(), startDate, endDate, capacity: Math.max(0, Number(req.body.capacity) || 0), stages });
+    await board.save();
+    res.status(201).json(board);
+  } catch (err) {
+    console.error("Create sprint error:", err.message);
+    res.status(500).json({ message: "Failed to create sprint" });
+  }
+});
+
+router.patch("/:id/sprints/:sprintId", async (req, res) => {
+  try {
+    const board = await Board.findOne({ _id: req.params.id, user: req.userId });
+    if (!board) return res.status(404).json({ message: "Board not found" });
+    const sprint = board.sprints.id(req.params.sprintId);
+    if (!sprint) return res.status(404).json({ message: "Sprint not found" });
+    if (req.body.status && ["planned", "active", "completed"].includes(req.body.status)) {
+      if (req.body.status === "active") board.sprints.forEach((item) => { if (String(item._id) !== String(sprint._id) && item.status === "active") item.status = "planned"; });
+      sprint.status = req.body.status;
+    }
+    ["name", "goal"].forEach((field) => { if (req.body[field] !== undefined) sprint[field] = String(req.body[field]).trim(); });
+    if (req.body.capacity !== undefined) sprint.capacity = Math.max(0, Number(req.body.capacity) || 0);
+    await board.save();
+    res.json(board);
+  } catch (err) {
+    console.error("Update sprint error:", err.message);
+    res.status(500).json({ message: "Failed to update sprint" });
+  }
+});
+
+router.delete("/:id/sprints/:sprintId", async (req, res) => {
+  try {
+    const board = await Board.findOne({ _id: req.params.id, user: req.userId });
+    if (!board) return res.status(404).json({ message: "Board not found" });
+    const sprint = board.sprints.id(req.params.sprintId);
+    if (!sprint) return res.status(404).json({ message: "Sprint not found" });
+    sprint.deleteOne();
+    await board.save();
+    await Todo.updateMany({ board: board._id, sprint: req.params.sprintId }, { $set: { sprint: null, workflowStage: "To do" } });
+    res.json(board);
+  } catch (err) {
+    console.error("Delete sprint error:", err.message);
+    res.status(500).json({ message: "Failed to delete sprint" });
   }
 });
 
