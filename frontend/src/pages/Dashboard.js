@@ -8,6 +8,9 @@ import GitHubDashboard from "../components/GitHubDashboard";
 import DynamicBoard from "../components/DynamicBoard";
 import PasswordVault from "../components/PasswordVault";
 import ResourceUtilization from "../components/ResourceUtilization";
+import CommandCenter from "../components/CommandCenter";
+import CommandPalette from "../components/CommandPalette";
+import AssistantPanel from "../components/AssistantPanel";
 import { useNotifications } from "../context/NotificationContext";
 
 function formatDateTime(iso) {
@@ -36,9 +39,11 @@ export default function Dashboard() {
   const [googleConnected, setGoogleConnected] = useState(false);
   const [githubConnected, setGithubConnected] = useState(false);
   const [githubProfile, setGithubProfile] = useState(null);
-  const [activeView, setActiveView] = useState("workspace");
+  const [activeView, setActiveView] = useState("command");
   const [sidebarMode, setSidebarMode] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(true);
 
   const activeBoard = boards.find((board) => board._id === activeBoardId);
   const canEditBoard = activeBoard?.access !== "shared";
@@ -160,6 +165,19 @@ export default function Dashboard() {
     loadTodos(activeBoardId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBoardId]);
+
+  useEffect(() => {
+    function handleShortcut(event) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setCommandOpen(true); }
+    }
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
+
+  function openBoardFromCommand(boardId) {
+    setActiveBoardId(boardId);
+    setActiveView("workspace");
+  }
 
   async function handleCreateBoard(event) {
     event.preventDefault();
@@ -393,6 +411,7 @@ export default function Dashboard() {
         </a>
 
         <div className="topbar-center">
+          <button type="button" className={activeView === "command" ? "nav-link active" : "nav-link"} onClick={() => setActiveView("command")}>Command</button>
           <button
             type="button"
             className={activeView === "workspace" ? "nav-link active" : "nav-link"}
@@ -432,6 +451,8 @@ export default function Dashboard() {
         </div>
 
         <div className="account-actions">
+          <button type="button" className="icon-btn command-key" onClick={() => setCommandOpen(true)} title="Command palette (Ctrl+K)">⌘</button>
+          <button type="button" className={assistantOpen ? "icon-btn assistant-key active" : "icon-btn assistant-key"} onClick={() => setAssistantOpen(!assistantOpen)} title="Toggle intelligence panel">AI</button>
           <button type="button" className="navbar-profile" onClick={() => setActiveView("settings")} title="Open settings">
             <span className="user-avatar">
               {user?.avatar ? <img src={user.avatar} alt="" /> : (user?.name || "U").charAt(0).toUpperCase()}
@@ -444,7 +465,7 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <div className={activeView !== "workspace" ? "dashboard-layout storage-layout" : sidebarOpen ? "dashboard-layout" : "dashboard-layout sidebar-collapsed"}>
+      <div className={`${activeView !== "workspace" ? "dashboard-layout storage-layout" : sidebarOpen ? "dashboard-layout" : "dashboard-layout sidebar-collapsed"} ${assistantOpen ? "with-assistant" : ""}`}>
         {activeView === "workspace" && <button type="button" className="sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label={sidebarOpen ? "Close workspace sidebar" : "Open workspace sidebar"} title={sidebarOpen ? "Close sidebar" : "Open sidebar"}>{sidebarOpen ? "‹" : "›"}</button>}
         {activeView === "workspace" && <aside className="sidebar">
           <div className="sidebar-heading">
@@ -528,7 +549,7 @@ export default function Dashboard() {
           </div>
         </aside>}
 
-        {activeView === "files" ? <FileStorage /> : activeView === "github" ? (
+        {activeView === "command" ? <CommandCenter user={user} boards={boards} githubConnected={githubConnected} onNavigate={setActiveView} onBoard={openBoardFromCommand} onPalette={() => setCommandOpen(true)} /> : activeView === "files" ? <FileStorage /> : activeView === "github" ? (
           <GitHubDashboard connected={githubConnected} connectGitHub={connectGitHub} boards={boards} activeBoardId={activeBoardId} />
         ) : activeView === "utilization" ? (
           <ResourceUtilization />
@@ -567,6 +588,8 @@ export default function Dashboard() {
           <DynamicBoard board={activeBoard} todos={todos} loading={loading} canEdit={canEditBoard} onToggle={handleToggle} onDelete={handleDelete} onBoardSaved={handleScratchpadSaved} onTodosChanged={() => loadTodos(activeBoardId)} />
         </main>}
       </div>
+      <AssistantPanel open={assistantOpen} onClose={() => setAssistantOpen(false)} activeView={activeView} board={activeBoard} todos={todos} githubConnected={githubConnected} onNavigate={setActiveView} />
+      <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} boards={boards} onView={setActiveView} onBoard={openBoardFromCommand} onAssistant={() => setAssistantOpen((value) => !value)} />
     </div>
   );
 }
