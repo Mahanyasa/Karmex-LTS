@@ -1201,6 +1201,16 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .settings-legal-links { display: flex; gap: 14px; }
 .settings-legal-links a { color: var(--muted); font-size: 10px; font-weight: 800; text-decoration: none; }
 .settings-legal-links a:hover { color: var(--text); }
+.password-panel { min-width: 0; }
+.password-form > p { margin: -8px 0 4px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.password-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.password-requirements { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
+.password-requirements span { position: relative; padding: 6px 8px 6px 19px; color: var(--muted); background: #071017; border: 1px solid var(--border); border-radius: 2px; font-family: "SFMono-Regular", Consolas, monospace; font-size: 7px; text-transform: uppercase; }
+.password-requirements span::before { content: ""; position: absolute; top: 50%; left: 8px; width: 5px; height: 5px; background: #42515a; border-radius: 50%; transform: translateY(-50%); }
+.password-requirements span.met { color: var(--success); border-color: rgba(84,239,179,.28); }
+.password-requirements span.met::before { background: var(--success); box-shadow: 0 0 7px rgba(84,239,179,.6); }
+.password-visibility { display: flex; align-items: center; gap: 7px; margin-right: auto; color: var(--muted-strong); font-size: 9px; cursor: pointer; }
+.password-visibility input { width: 14px; height: 14px; accent-color: var(--accent); }
 .social-panel { min-width: 0; }
 .friend-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .friend-search input, .board-share-form select { min-width: 0; padding: 10px 11px; color: var(--text); background: #0a0d12; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; }
@@ -1603,6 +1613,7 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   .reminder-fields { grid-template-columns: 1fr auto; }
   .settings-grid { grid-template-columns: 1fr; }
   .session-panel { grid-column: auto; }
+  .password-field-grid { grid-template-columns: 1fr; gap: 0; }
   .github-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .github-stats > div:nth-child(2) { border-right: 0; }
   .github-stats > div:nth-child(-n+2) { border-bottom: 1px solid var(--border); }

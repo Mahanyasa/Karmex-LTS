@@ -41,6 +41,9 @@ export default function Settings({ googleConnected, connectGoogle, disconnectGoo
   const [avatar, setAvatar] = useState(user?.avatar || null);
   const [storage, setStorage] = useState({ loading: true, connected: false });
   const [saving, setSaving] = useState(false);
+  const [passwords, setPasswords] = useState({ current: "", next: "", confirm: "" });
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [showPasswords, setShowPasswords] = useState(false);
   const setMessage = (message) => notify(message, /failed|error|choose/i.test(message) ? "error" : "success");
 
   useEffect(() => {
@@ -86,6 +89,27 @@ export default function Settings({ googleConnected, connectGoogle, disconnectGoo
     } finally {
       setSaving(false);
     }
+  }
+
+  const passwordChecks = {
+    length: passwords.next.length >= 10,
+    upper: /[A-Z]/.test(passwords.next),
+    lower: /[a-z]/.test(passwords.next),
+    number: /\d/.test(passwords.next),
+    matches: Boolean(passwords.next) && passwords.next === passwords.confirm,
+  };
+
+  async function changePassword(event) {
+    event.preventDefault();
+    if (!Object.values(passwordChecks).every(Boolean)) return notify("Complete all password requirements.", "error");
+    try {
+      setPasswordBusy(true);
+      const { data } = await api.patch("/auth/password", { currentPassword: passwords.current, newPassword: passwords.next });
+      setPasswords({ current: "", next: "", confirm: "" });
+      setShowPasswords(false);
+      notify(data.message || "Password updated successfully.", "success");
+    } catch (err) { notify(err.response?.data?.message || "Failed to update password", "error"); }
+    finally { setPasswordBusy(false); }
   }
 
   return (
@@ -170,6 +194,23 @@ export default function Settings({ googleConnected, connectGoogle, disconnectGoo
         </section>
 
         <SocialPanel boards={boards} reloadBoards={reloadBoards} />
+
+        <section className="settings-panel password-panel">
+          <div className="settings-panel-heading">
+            <div><span className="eyebrow">SECURITY</span><h2>Change password</h2></div>
+            <span className="settings-index">04</span>
+          </div>
+          <form className="password-form" onSubmit={changePassword}>
+            <p>Verify your current password, then choose a stronger replacement.</p>
+            <label className="settings-field"><span>Current password</span><input type={showPasswords ? "text" : "password"} value={passwords.current} onChange={(event) => setPasswords({ ...passwords, current: event.target.value })} autoComplete="current-password" required /></label>
+            <div className="password-field-grid">
+              <label className="settings-field"><span>New password</span><input type={showPasswords ? "text" : "password"} value={passwords.next} onChange={(event) => setPasswords({ ...passwords, next: event.target.value })} autoComplete="new-password" required /></label>
+              <label className="settings-field"><span>Confirm new password</span><input type={showPasswords ? "text" : "password"} value={passwords.confirm} onChange={(event) => setPasswords({ ...passwords, confirm: event.target.value })} autoComplete="new-password" required /></label>
+            </div>
+            <div className="password-requirements"><span className={passwordChecks.length ? "met" : ""}>10+ characters</span><span className={passwordChecks.upper ? "met" : ""}>Uppercase</span><span className={passwordChecks.lower ? "met" : ""}>Lowercase</span><span className={passwordChecks.number ? "met" : ""}>Number</span><span className={passwordChecks.matches ? "met" : ""}>Passwords match</span></div>
+            <div className="settings-form-actions"><label className="password-visibility"><input type="checkbox" checked={showPasswords} onChange={(event) => setShowPasswords(event.target.checked)} /> Show passwords</label><button type="submit" className="accent-btn" disabled={passwordBusy}>{passwordBusy ? "Updating..." : "Update password"}</button></div>
+          </form>
+        </section>
 
         <section className="settings-panel session-panel">
           <div><span className="eyebrow">SESSION</span><h2>Account access</h2><p>Sign out of Karmex LTS on this device.</p><span className="app-version">Karmex LTS {APP_VERSION} · API {API_VERSION}</span></div>

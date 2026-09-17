@@ -26,7 +26,7 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json({ limit: "15mb" }));
+app.use(express.json({ limit: "18mb" }));
 
 app.use((req, res, next) => {
   res.setHeader("X-Karmex-API-Version", API_VERSION);

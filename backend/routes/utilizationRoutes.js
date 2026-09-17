@@ -1,5 +1,6 @@
 const express = require("express");
 const crypto = require("crypto");
+const ExcelJS = require("exceljs");
 const UtilizationReport = require("../models/UtilizationReport");
 const auth = require("../middleware/auth");
 
@@ -21,6 +22,50 @@ const ELEMENTS = [
 ];
 
 function dayKey(value) { return new Date(value).toISOString().slice(0, 10); }
+function cellValue(cell) {
+  const value = cell?.value;
+  if (value == null) return "";
+  if (value instanceof Date) return value;
+  if (typeof value === "object") return value.result ?? value.text ?? value.richText?.map((part) => part.text).join("") ?? "";
+  return value;
+}
+function normalizeHeader(value) { return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, ""); }
+function excelDate(value) {
+  if (value instanceof Date) return value;
+  if (typeof value === "number") return new Date(Date.UTC(1899, 11, 30) + value * 86400000);
+  return new Date(value);
+}
+async function parseWorkbook(base64) {
+  const buffer = Buffer.from(String(base64 || ""), "base64");
+  if (!buffer.length || buffer.length > 12 * 1024 * 1024) throw new Error("Workbook must be smaller than 12 MB");
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  const entries = [];
+  workbook.eachSheet((sheet) => {
+    if (/\bfp\b|resource utilization|work timeline|elemental breakdown|customer complain/i.test(sheet.name)) return;
+    let headerRow = null; const columns = {};
+    for (let rowNumber = 1; rowNumber <= Math.min(12, sheet.rowCount); rowNumber += 1) {
+      sheet.getRow(rowNumber).eachCell((cell, columnNumber) => {
+        const key = normalizeHeader(cellValue(cell));
+        if (key === "date") columns.date = columnNumber;
+        if (["classification", "project", "worktypeproject"].includes(key)) columns.classification = columnNumber;
+        if (["taskdescription", "workdone", "description"].includes(key)) columns.description = columnNumber;
+        if (["done", "status"].includes(key)) columns.status = columnNumber;
+        if (["timetakenhours", "actualhours", "hours", "loggedhours"].includes(key)) columns.hours = columnNumber;
+      });
+      if (columns.date && columns.description) { headerRow = rowNumber; break; }
+    }
+    if (!headerRow) return;
+    for (let rowNumber = headerRow + 1; rowNumber <= sheet.rowCount; rowNumber += 1) {
+      const row = sheet.getRow(rowNumber); const date = excelDate(cellValue(row.getCell(columns.date)));
+      const description = String(cellValue(row.getCell(columns.description)) || "").trim();
+      if (Number.isNaN(date.getTime()) || !description) continue;
+      const rawHours = columns.hours ? cellValue(row.getCell(columns.hours)) : null; const hours = rawHours === null || rawHours === "" ? null : Number(rawHours);
+      entries.push({ member: sheet.name.trim(), date, classification: String(cellValue(row.getCell(columns.classification)) || "Unclassified").trim(), description, status: String(cellValue(row.getCell(columns.status)) || "").trim(), hours: Number.isFinite(hours) && hours >= 0 ? hours : null });
+    }
+  });
+  return entries;
+}
 function workingDaysBetween(start, end, workingDays) {
   let count = 0;
   for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) if (workingDays.includes(cursor.getUTCDay())) count += 1;
@@ -98,9 +143,10 @@ router.get("/", async (req, res) => {
 
 router.post("/import", async (req, res) => {
   try {
-    if (!Array.isArray(req.body.entries) || !req.body.entries.length) return res.status(400).json({ message: "No valid daily-update rows were found" });
-    if (req.body.entries.length > 15000) return res.status(400).json({ message: "The workbook exceeds the 15,000-row import limit" });
-    const entries = req.body.entries.map((entry) => ({ member: String(entry.member || "").trim().slice(0, 100), date: new Date(entry.date), classification: String(entry.classification || "Unclassified").trim().slice(0, 150), description: String(entry.description || "").trim().slice(0, 2000), status: String(entry.status || "").trim().slice(0, 80), hours: entry.hours === null || entry.hours === "" ? null : Math.max(0, Math.min(24, Number(entry.hours))) })).filter((entry) => entry.member && !Number.isNaN(entry.date.getTime()));
+    const workbookEntries = req.body.workbookBase64 ? await parseWorkbook(req.body.workbookBase64) : req.body.entries;
+    if (!Array.isArray(workbookEntries) || !workbookEntries.length) return res.status(400).json({ message: "No valid employee daily-update rows were found" });
+    if (workbookEntries.length > 15000) return res.status(400).json({ message: "The workbook exceeds the 15,000-row import limit" });
+    const entries = workbookEntries.map((entry) => ({ member: String(entry.member || "").trim().slice(0, 100), date: new Date(entry.date), classification: String(entry.classification || "Unclassified").trim().slice(0, 150), description: String(entry.description || "").trim().slice(0, 2000), status: String(entry.status || "").trim().slice(0, 80), hours: entry.hours === null || entry.hours === "" ? null : Math.max(0, Math.min(24, Number(entry.hours))) })).filter((entry) => entry.member && !Number.isNaN(entry.date.getTime()));
     if (!entries.length) return res.status(400).json({ message: "No dated employee records were found" });
     const existing = await UtilizationReport.findOne({ user: req.userId });
     const merged = new Map((existing?.entries || []).map((entry) => {
@@ -117,7 +163,7 @@ router.post("/import", async (req, res) => {
     if (merged.size > 15000) return res.status(400).json({ message: "The combined history exceeds the 15,000-row limit" });
     const report = await UtilizationReport.findOneAndUpdate({ user: req.userId }, { sourceName: String(req.body.sourceName || "Daily Update.xlsx").slice(0, 255), settings: existing?.settings || { hoursPerDay: 8, workingDays: [1, 2, 3, 4, 5, 6] }, entries: [...merged.values()] }, { new: true, upsert: true, setDefaultsOnInsert: true });
     res.status(201).json({ ...buildReport(report), importStats: { added, updated, duplicates, total: merged.size } });
-  } catch (err) { console.error("Utilization import error:", err); res.status(500).json({ message: "Failed to import utilization data" }); }
+  } catch (err) { console.error("Utilization import error:", err); res.status(400).json({ message: err.message || "Failed to import utilization data" }); }
 });
 
 module.exports = router;

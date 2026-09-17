@@ -4,50 +4,7 @@ import { useNotifications } from "../context/NotificationContext";
 
 const percent = (value) => `${Math.round((value || 0) * 100)}%`;
 const number = (value) => Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 1 });
-function cellValue(cell) {
-  const value = cell?.value;
-  if (value == null) return "";
-  if (value instanceof Date) return value;
-  if (typeof value === "object") return value.result ?? value.text ?? value.richText?.map((part) => part.text).join("") ?? "";
-  return value;
-}
-const normalized = (value) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
-
-async function parseWorkbook(file) {
-  const { default: ExcelJS } = await import("exceljs");
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(await file.arrayBuffer());
-  const entries = [];
-  workbook.eachSheet((sheet) => {
-    if (/\bfp\b|resource utilization|work timeline|elemental breakdown|customer complain/i.test(sheet.name)) return;
-    let headerRow = null;
-    const columns = {};
-    for (let rowNumber = 1; rowNumber <= Math.min(12, sheet.rowCount); rowNumber += 1) {
-      const row = sheet.getRow(rowNumber);
-      row.eachCell((cell, columnNumber) => {
-        const key = normalized(cellValue(cell));
-        if (key === "date") columns.date = columnNumber;
-        if (["classification", "project", "worktypeproject"].includes(key)) columns.classification = columnNumber;
-        if (["taskdescription", "workdone", "description"].includes(key)) columns.description = columnNumber;
-        if (["done", "status"].includes(key)) columns.status = columnNumber;
-        if (["timetakenhours", "actualhours", "hours", "loggedhours"].includes(key)) columns.hours = columnNumber;
-      });
-      if (columns.date && columns.description) { headerRow = rowNumber; break; }
-    }
-    if (!headerRow) return;
-    for (let rowNumber = headerRow + 1; rowNumber <= sheet.rowCount; rowNumber += 1) {
-      const row = sheet.getRow(rowNumber);
-      const rawDate = cellValue(row.getCell(columns.date));
-      const date = rawDate instanceof Date ? rawDate : new Date(rawDate);
-      const description = String(cellValue(row.getCell(columns.description)) || "").trim();
-      if (Number.isNaN(date.getTime()) || !description) continue;
-      const rawHours = columns.hours ? cellValue(row.getCell(columns.hours)) : null;
-      const hours = rawHours === null || rawHours === "" ? null : Number(rawHours);
-      entries.push({ member: sheet.name.trim(), date: date.toISOString(), classification: String(cellValue(row.getCell(columns.classification)) || "Unclassified").trim(), description, status: String(cellValue(row.getCell(columns.status)) || "").trim(), hours: Number.isFinite(hours) && hours >= 0 ? hours : null });
-    }
-  });
-  return entries;
-}
+function fileAsBase64(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onerror = () => reject(new Error("Could not read the workbook")); reader.onload = () => resolve(String(reader.result).split(",")[1] || ""); reader.readAsDataURL(file); }); }
 
 export default function ResourceUtilization() {
   const { notify } = useNotifications();
@@ -63,13 +20,13 @@ export default function ResourceUtilization() {
     if (!/\.xlsx$/i.test(file.name)) return notify("Upload an .xlsx workbook exported from Google Sheets.", "error");
     try {
       setUploading(true);
-      const entries = await parseWorkbook(file);
-      const { data } = await api.post("/utilization/import", { sourceName: file.name, entries });
+      const workbookBase64 = await fileAsBase64(file);
+      const { data } = await api.post("/utilization/import", { sourceName: file.name, workbookBase64 });
       setReport(data);
       setSelectedMember(data.members[0]?.member || "");
       const stats = data.importStats;
-      notify(stats ? `${stats.added} new, ${stats.updated} updated, ${stats.duplicates} duplicates skipped.` : `Imported ${entries.length.toLocaleString()} daily update rows.`, "success");
-    } catch (err) { notify(err.response?.data?.message || "The workbook could not be imported.", "error"); }
+      notify(stats ? `${stats.added} new, ${stats.updated} updated, ${stats.duplicates} duplicates skipped.` : "Workbook imported.", "success");
+    } catch (err) { notify(err.response?.data?.message || err.message || "The workbook could not be imported.", "error"); }
     finally { setUploading(false); if (inputRef.current) inputRef.current.value = ""; }
   }
 
