@@ -7,6 +7,7 @@ import Settings from "../components/Settings";
 import GitHubDashboard from "../components/GitHubDashboard";
 import DynamicBoard from "../components/DynamicBoard";
 import PasswordVault from "../components/PasswordVault";
+import ResourceUtilization from "../components/ResourceUtilization";
 import { useNotifications } from "../context/NotificationContext";
 
 function formatDateTime(iso) {
@@ -420,6 +421,7 @@ export default function Dashboard() {
           >
             Vault
           </button>
+          <button type="button" className={activeView === "utilization" ? "nav-link active" : "nav-link"} onClick={() => setActiveView("utilization")}>Utilization</button>
           <button
             type="button"
             className={activeView === "settings" ? "nav-link active" : "nav-link"}
@@ -528,6 +530,8 @@ export default function Dashboard() {
 
         {activeView === "files" ? <FileStorage /> : activeView === "github" ? (
           <GitHubDashboard connected={githubConnected} connectGitHub={connectGitHub} boards={boards} activeBoardId={activeBoardId} />
+        ) : activeView === "utilization" ? (
+          <ResourceUtilization />
         ) : activeView === "vault" ? (
           <PasswordVault />
         ) : activeView === "settings" ? (

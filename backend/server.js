@@ -11,6 +11,7 @@ const fileRoutes = require("./routes/fileRoutes");
 const githubRoutes = require("./routes/githubRoutes");
 const vaultRoutes = require("./routes/vaultRoutes");
 const socialRoutes = require("./routes/socialRoutes");
+const utilizationRoutes = require("./routes/utilizationRoutes");
 const { API_VERSION, APP_VERSION } = require("./config/version");
 
 const app = express();
@@ -25,7 +26,7 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "15mb" }));
 
 app.use((req, res, next) => {
   res.setHeader("X-Karmex-API-Version", API_VERSION);
@@ -54,6 +55,7 @@ function mountApi(prefix) {
   app.use(`${prefix}/github`, githubRoutes);
   app.use(`${prefix}/vault`, vaultRoutes);
   app.use(`${prefix}/social`, socialRoutes);
+  app.use(`${prefix}/utilization`, utilizationRoutes);
 }
 
 mountApi(`/api/${API_VERSION}`);
