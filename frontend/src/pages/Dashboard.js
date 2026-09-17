@@ -14,10 +14,25 @@ function rotationFor(id) {
   return (hash % 7) - 3; // -3deg to 3deg
 }
 
+// Format an ISO datetime string into a compact "Sep 17, 3:00 PM" label.
+function formatDateTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const [todos, setTodos] = useState([]);
   const [newText, setNewText] = useState("");
+  const [newStart, setNewStart] = useState("");
+  const [newEnd, setNewEnd] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -95,9 +110,25 @@ export default function Dashboard() {
   async function handleAddManual(e) {
     e.preventDefault();
     if (!newText.trim()) return;
+
+    // Convert local datetime-local values ("YYYY-MM-DDTHH:mm") to ISO strings.
+    const startISO = newStart ? new Date(newStart).toISOString() : null;
+    const endISO = newEnd ? new Date(newEnd).toISOString() : null;
+
+    if (startISO && endISO && new Date(endISO) <= new Date(startISO)) {
+      setMessage("End time must be after start time");
+      return;
+    }
+
     try {
-      await api.post("/todos", { text: newText.trim() });
+      await api.post("/todos", {
+        text: newText.trim(),
+        start: startISO,
+        end: endISO,
+      });
       setNewText("");
+      setNewStart("");
+      setNewEnd("");
       await organize();
     } catch (err) {
       setMessage("Failed to add task");
@@ -138,7 +169,15 @@ export default function Dashboard() {
     setBusy(true);
     setMessage("");
     try {
-      const { data } = await api.post("/todos/dictate", { transcript });
+      // Send the client's current date/time so the backend can resolve
+      // relative phrases in the transcript ("at 5pm", "tomorrow", etc.)
+      // against the user's actual local time and timezone.
+      const now = new Date();
+      const { data } = await api.post("/todos/dictate", {
+        transcript,
+        clientDateTime: now.toISOString(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
       setTodos(data.todos);
       setMessage(`Added ${data.created} task(s) from dictation.`);
       reset();
@@ -230,6 +269,23 @@ export default function Dashboard() {
           value={newText}
           onChange={(e) => setNewText(e.target.value)}
         />
+        <label className="field-label">
+          Start
+          <input
+            type="datetime-local"
+            value={newStart}
+            onChange={(e) => setNewStart(e.target.value)}
+          />
+        </label>
+        <label className="field-label">
+          End
+          <input
+            type="datetime-local"
+            value={newEnd}
+            onChange={(e) => setNewEnd(e.target.value)}
+            min={newStart || undefined}
+          />
+        </label>
         <button type="submit">Add</button>
       </form>
 
@@ -272,7 +328,15 @@ export default function Dashboard() {
                   <span className="sticky-text">{todo.text}</span>
                 </label>
                 <div className="sticky-meta">
-                  {todo.timeHint && <span className="chip">{todo.timeHint}</span>}
+                  {todo.start && (
+                    <span className="chip time-chip">
+                      {formatDateTime(todo.start)}
+                      {todo.end ? ` – ${formatDateTime(todo.end)}` : ""}
+                    </span>
+                  )}
+                  {!todo.start && todo.timeHint && (
+                    <span className="chip">{todo.timeHint}</span>
+                  )}
                   {todo.duration && <span className="chip">{todo.duration}m</span>}
                   <span className={`chip priority-chip ${todo.priority}`}>
                     {todo.priority}
