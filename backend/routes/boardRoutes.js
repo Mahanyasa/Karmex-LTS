@@ -131,6 +131,40 @@ router.patch("/:id", async (req, res) => {
   }
 });
 
+router.patch("/:id/scratchpad", async (req, res) => {
+  try {
+    const body = String(req.body.body || "").slice(0, 50000);
+    const board = await Board.findOneAndUpdate(
+      { _id: req.params.id, user: req.userId },
+      { scratchpad: { body, updatedAt: new Date() } },
+      { new: true }
+    );
+
+    if (!board) return res.status(404).json({ message: "Board not found" });
+    res.json(board);
+  } catch (err) {
+    console.error("Save scratchpad error:", err);
+    res.status(500).json({ message: "Failed to save scratchpad" });
+  }
+});
+
+router.patch("/:id/notes", async (req, res) => {
+  try {
+    const title = String(req.body.title || "").slice(0, 120);
+    const body = String(req.body.body || "").slice(0, 100000);
+    const board = await Board.findOneAndUpdate(
+      { _id: req.params.id, user: req.userId },
+      { notes: { title, body, updatedAt: new Date() } },
+      { new: true }
+    );
+    if (!board) return res.status(404).json({ message: "Board not found" });
+    res.json(board);
+  } catch (err) {
+    console.error("Save notes error:", err);
+    res.status(500).json({ message: "Failed to save notes" });
+  }
+});
+
 router.delete("/:id", async (req, res) => {
   try {
     const board = await Board.findOne({
@@ -178,4 +212,3 @@ router.delete("/:id", async (req, res) => {
 });
 
 module.exports = router;
-

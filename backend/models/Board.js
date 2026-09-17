@@ -15,6 +15,17 @@ const boardSchema = new mongoose.Schema(
       trim: true,
       maxlength: 80,
     },
+
+    scratchpad: {
+      body: { type: String, default: "", maxlength: 50000 },
+      updatedAt: { type: Date, default: null },
+    },
+
+    notes: {
+      title: { type: String, default: "", maxlength: 120 },
+      body: { type: String, default: "", maxlength: 100000 },
+      updatedAt: { type: Date, default: null },
+    },
   },
   {
     timestamps: true,

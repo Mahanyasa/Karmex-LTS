@@ -940,6 +940,37 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .whiteboard-section .empty-state { color: #707782; }
 .whiteboard-section .empty-state h3 { color: #181b20; }
 
+.writing-suite {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: 22px;
+  margin-bottom: 38px;
+}
+.notes-document { min-width: 0; overflow: hidden; background: #e9eaed; border: 1px solid #c9cdd3; border-radius: 6px; box-shadow: 0 18px 45px rgba(26, 30, 36, 0.16); }
+.notes-toolbar { min-height: 52px; display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 8px 12px; background: #f5f6f7; border-bottom: 1px solid #cdd1d7; }
+.toolbar-group { display: flex; align-items: center; gap: 5px; }
+.toolbar-group button { width: 34px; height: 34px; padding: 0; color: #343942; background: #fff; border: 1px solid #cbd0d7; border-radius: 5px; font-size: 12px; cursor: pointer; }
+.toolbar-group button:hover { color: #11151b; background: #e7f7c8; border-color: #9ebf5d; }
+.document-status { display: flex; gap: 14px; color: #717984; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.document-page { width: min(92%, 850px); min-height: 68vh; margin: 28px auto; padding: clamp(34px, 6vw, 72px); background: #fff; border: 1px solid #d6d8dc; box-shadow: 0 8px 28px rgba(31, 36, 43, 0.12); }
+.document-page input { width: 100%; padding: 0 0 18px; color: #181b20; background: transparent; border: 0; border-bottom: 1px solid #e1e3e6; border-radius: 0; outline: none; font-family: Georgia, "Times New Roman", serif; font-size: 30px; font-weight: 700; }
+.document-page textarea { width: 100%; min-height: calc(68vh - 155px); margin-top: 24px; padding: 0; resize: vertical; color: #24272d; background: repeating-linear-gradient(to bottom, transparent 0, transparent 29px, #edf0f2 30px); border: 0; outline: none; font-family: Georgia, "Times New Roman", serif; font-size: 16px; line-height: 30px; }
+.secure-scratchpad { min-width: 0; min-height: 480px; display: flex; flex-direction: column; padding: 20px; color: var(--text); background: #10141b; border: 1px solid #343b48; border-radius: 6px; box-shadow: 0 18px 45px rgba(25, 29, 35, 0.22); }
+.scratchpad-heading { display: flex; align-items: center; gap: 11px; padding-bottom: 16px; border-bottom: 1px solid #29303b; }
+.scratch-lock { width: 34px; height: 34px; display: grid; place-items: center; color: var(--accent); background: rgba(183, 240, 74, 0.08); border: 1px solid rgba(183, 240, 74, 0.24); border-radius: 6px; font-size: 10px; }
+.scratchpad-heading > div { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.scratchpad-heading strong { font-size: 12px; }
+.scratchpad-heading div span { color: var(--muted); font-size: 9px; }
+.secure-scratchpad textarea { width: 100%; flex: 1; min-height: 360px; margin: 16px 0; padding: 0; resize: none; color: #e7eaf0; background: transparent; border: 0; outline: none; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; line-height: 1.65; }
+.scratchpad-footer { display: flex; justify-content: space-between; gap: 10px; padding-top: 13px; color: var(--muted); border-top: 1px solid #29303b; font-size: 9px; }
+.save-state { color: var(--success); font-weight: 900; text-transform: uppercase; }
+.save-state.error { color: var(--danger); }
+.post-it-heading { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: flex-end; margin: 0 4px 12px; padding-top: 28px; border-top: 1px solid rgba(24, 27, 32, 0.13); }
+.post-it-heading h3 { margin: 2px 0 0; color: #181b20; font-size: 22px; }
+.post-it-heading > span { color: #6b727d; font-size: 10px; font-weight: 800; }
+
 .whiteboard {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(205px, 1fr));
@@ -1294,6 +1325,11 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   .reminder-fields { grid-template-columns: 1fr; }
   .reminder-fields .accent-btn { width: 100%; }
   .whiteboard { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; padding-inline: 0; }
+  .writing-suite { grid-template-columns: 1fr; }
+  .document-page { width: calc(100% - 28px); min-height: 62vh; margin: 14px; padding: 28px 24px; }
+  .document-page textarea { min-height: calc(62vh - 130px); }
+  .secure-scratchpad { min-height: 330px; }
+  .secure-scratchpad textarea { min-height: 220px; }
   .post-it { min-height: 190px; padding-inline: 18px; }
   .board-delete-btn { opacity: 1; }
   .dictation-strip { align-items: flex-start; flex-direction: column; }

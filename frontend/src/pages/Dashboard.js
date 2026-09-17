@@ -5,6 +5,7 @@ import useDictation from "../components/useDictation";
 import FileStorage from "../components/FileStorage";
 import Settings from "../components/Settings";
 import GitHubDashboard from "../components/GitHubDashboard";
+import BoardScratchpad from "../components/BoardScratchpad";
 import { useNotifications } from "../context/NotificationContext";
 
 function formatDateTime(iso) {
@@ -51,6 +52,9 @@ export default function Dashboard() {
     const type = /failed|error|invalid|required|wrong|cancelled|choose/i.test(message) ? "error" : "success";
     notify(message, type);
   };
+  const handleScratchpadSaved = React.useCallback((savedBoard) => {
+    setBoards((current) => current.map((board) => board._id === savedBoard._id ? savedBoard : board));
+  }, []);
 
   const nextTask = useMemo(
     () =>
@@ -616,10 +620,17 @@ export default function Dashboard() {
           <section className="tasks-section whiteboard-section">
             <div className="section-title-row">
               <div>
-                <span className="eyebrow">BOARD TASKS</span>
-                <h2>Post-it whiteboard</h2>
+                <span className="eyebrow">BOARD CANVAS</span>
+                <h2>Scratchpad & post-its</h2>
               </div>
               <span className="task-summary">{upcomingCount} remaining</span>
+            </div>
+
+            <BoardScratchpad board={activeBoard} onSaved={handleScratchpadSaved} />
+
+            <div className="post-it-heading">
+              <div><span className="eyebrow">ACTION NOTES</span><h3>Post-its</h3></div>
+              <span>{todos.length} notes</span>
             </div>
 
             {loading ? (
