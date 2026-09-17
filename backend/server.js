@@ -1,0 +1,40 @@
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const connectDB = require("./config/db");
+const scheduleDailyReset = require("./cron/dailyReset");
+
+const authRoutes = require("./routes/authRoutes");
+const todoRoutes = require("./routes/todoRoutes");
+const googleRoutes = require("./routes/googleRoutes");
+
+const app = express();
+
+const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:3000")
+  .split(",")
+  .map((o) => o.trim());
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  })
+);
+app.use(express.json());
+
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", time: new Date().toISOString() });
+});
+
+app.use("/api/auth", authRoutes);
+app.use("/api/todos", todoRoutes);
+app.use("/api/google", googleRoutes);
+
+const PORT = process.env.PORT || 3001;
+
+connectDB().then(() => {
+  scheduleDailyReset();
+  app.listen(PORT, () => {
+    console.log(`[server] Listening on port ${PORT}`);
+  });
+});
