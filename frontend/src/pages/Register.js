@@ -10,13 +10,14 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [acceptLegal, setAcceptLegal] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setBusy(true);
     try {
-      await register(name, email, password);
+      await register(name, email, password, acceptLegal);
       navigate("/");
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed");
@@ -58,14 +59,21 @@ export default function Register() {
           required
         />
 
-        <button type="submit" disabled={busy}>
+        <label className="legal-consent">
+          <input type="checkbox" checked={acceptLegal} onChange={(e) => setAcceptLegal(e.target.checked)} required />
+          <span>I agree to the <Link to="/terms" target="_blank">Terms v1.0</Link> and acknowledge the <Link to="/privacy" target="_blank">Privacy Policy v1.0</Link>.</span>
+        </label>
+
+        <button type="submit" disabled={busy || !acceptLegal}>
           {busy ? "Creating..." : "Sign Up"}
         </button>
 
         <p className="switch-link">
           Already have an account? <Link to="/login">Log in</Link>
         </p>
+        <p className="auth-legal">By creating an account, you agree to our <Link to="/terms">Terms</Link> and acknowledge our <Link to="/privacy">Privacy Policy</Link>.</p>
       </form>
     </div>
   );
 }
+

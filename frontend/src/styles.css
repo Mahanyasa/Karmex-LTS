@@ -101,6 +101,11 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 
 .switch-link { margin-top: 20px; text-align: center; font-size: 13px; }
 .switch-link a { color: var(--accent); text-decoration: none; font-weight: 700; }
+.auth-legal { margin: 16px 0 0; color: #6f7888; font-size: 10px; line-height: 1.55; text-align: center; }
+.auth-legal a { color: var(--muted-strong); }
+.legal-consent { display: grid !important; grid-template-columns: 18px 1fr; gap: 9px; align-items: start; margin-top: 18px !important; color: var(--muted) !important; font-size: 11px !important; font-weight: 500 !important; line-height: 1.45; }
+.legal-consent input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+.legal-consent a { color: var(--accent); }
 
 .app-shell { min-height: 100vh; background: var(--bg); }
 
@@ -1116,6 +1121,40 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .session-panel p { margin: 0; color: var(--muted); font-size: 12px; }
 .danger-btn { padding: 10px 15px; color: #ffc3c8; background: rgba(255, 107, 120, 0.08); border: 1px solid rgba(255, 107, 120, 0.28); border-radius: 6px; font-size: 11px; font-weight: 900; cursor: pointer; }
 .danger-btn:hover { color: #fff; background: rgba(255, 107, 120, 0.18); }
+.session-actions { display: flex; align-items: center; gap: 22px; }
+.settings-legal-links { display: flex; gap: 14px; }
+.settings-legal-links a { color: var(--muted); font-size: 10px; font-weight: 800; text-decoration: none; }
+.settings-legal-links a:hover { color: var(--text); }
+
+.legal-page { min-height: 100vh; background: var(--bg); }
+.legal-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 72px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 clamp(22px, 5vw, 72px);
+  background: rgba(8, 10, 15, 0.94);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(14px);
+}
+.legal-back { color: var(--muted-strong); font-size: 11px; font-weight: 800; text-decoration: none; }
+.legal-back:hover { color: var(--accent); }
+.legal-document { width: min(100% - 40px, 900px); margin: 0 auto; padding: 72px 0 48px; }
+.legal-header { padding-bottom: 40px; border-bottom: 1px solid var(--border); }
+.legal-header h1 { max-width: 760px; margin: 0; font-size: clamp(42px, 7vw, 74px); line-height: 1; }
+.legal-header > p { max-width: 680px; margin: 22px 0 0; color: var(--muted); font-size: 15px; line-height: 1.75; }
+.legal-meta { display: flex; flex-wrap: wrap; gap: 10px 24px; margin-top: 30px; color: var(--muted-strong); font-size: 10px; font-weight: 900; text-transform: uppercase; }
+.legal-body { padding: 20px 0 50px; counter-reset: legal-section; }
+.legal-body section { display: grid; grid-template-columns: minmax(180px, 0.4fr) 1fr; gap: 36px; padding: 32px 0; border-bottom: 1px solid var(--border); }
+.legal-body h2 { margin: 0; color: var(--text); font-size: 14px; line-height: 1.45; }
+.legal-body section > p { grid-column: 2; margin: 0; color: var(--muted-strong); font-size: 13px; line-height: 1.8; }
+.legal-body section > p + p { margin-top: -20px; }
+.legal-footer { display: flex; justify-content: space-between; gap: 20px; padding-top: 24px; color: var(--muted); font-size: 10px; }
+.legal-footer div { display: flex; gap: 16px; }
+.legal-footer a { color: var(--muted-strong); text-decoration: none; }
 
 @media (max-width: 900px) {
   .topbar { grid-template-columns: 1fr auto; padding: 0 20px; }
@@ -1196,6 +1235,12 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   .connection-row { grid-template-columns: 38px minmax(0, 1fr); padding: 15px 0; }
   .connection-control { grid-column: 2; align-items: flex-start; }
   .session-panel { align-items: flex-start; flex-direction: column; }
+  .session-actions { width: 100%; align-items: flex-start; flex-direction: column; }
+  .legal-document { padding-top: 44px; }
+  .legal-body section { grid-template-columns: 1fr; gap: 13px; }
+  .legal-body section > p { grid-column: 1; }
+  .legal-body section > p + p { margin-top: 0; }
+  .legal-footer { flex-direction: column; }
 }
 
 @media (max-width: 430px) {

@@ -2,6 +2,7 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
+const { TERMS_VERSION, PRIVACY_VERSION } = require("../config/legal");
 
 const router = express.Router();
 
@@ -12,7 +13,7 @@ function signToken(userId) {
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, acceptLegal } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -22,12 +23,27 @@ router.post("/register", async (req, res) => {
         .json({ message: "Password must be at least 6 characters" });
     }
 
+    if (acceptLegal !== true) {
+      return res.status(400).json({
+        message: "You must accept the Terms and Privacy Policy",
+      });
+    }
+
     const existing = await User.findOne({ email: email.toLowerCase() });
     if (existing) {
       return res.status(409).json({ message: "Email already registered" });
     }
 
-    const user = await User.create({ name, email, password });
+    const user = await User.create({
+      name,
+      email,
+      password,
+      legalAcceptance: {
+        termsVersion: TERMS_VERSION,
+        privacyVersion: PRIVACY_VERSION,
+        acceptedAt: new Date(),
+      },
+    });
     const token = signToken(user._id);
 
     res.status(201).json({

@@ -13,6 +13,11 @@ const userSchema = new mongoose.Schema(
     },
     password: { type: String, required: true, minlength: 6 },
     avatar: { type: String, default: null, maxlength: 750000 },
+    legalAcceptance: {
+      termsVersion: { type: String, default: null },
+      privacyVersion: { type: String, default: null },
+      acceptedAt: { type: Date, default: null },
+    },
     // OAuth tokens for the user's OWN Google account, obtained via consent
     // screen (never their password). Used to create Calendar reminder events.
     googleTokens: {

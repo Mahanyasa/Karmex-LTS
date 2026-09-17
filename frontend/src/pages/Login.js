@@ -55,7 +55,9 @@ export default function Login() {
         <p className="switch-link">
           Don't have an account? <Link to="/register">Sign up</Link>
         </p>
+        <p className="auth-legal">By continuing, you agree to our <Link to="/terms">Terms</Link> and acknowledge our <Link to="/privacy">Privacy Policy</Link>.</p>
       </form>
     </div>
   );
 }
+

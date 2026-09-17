@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../api";
 import { useAuth } from "../context/AuthContext";
 
@@ -146,7 +147,7 @@ export default function Settings({ googleConnected, connectGoogle, disconnectGoo
 
         <section className="settings-panel session-panel">
           <div><span className="eyebrow">SESSION</span><h2>Account access</h2><p>Sign out of MK Life on this device.</p></div>
-          <button type="button" className="danger-btn" onClick={logout}>Log out</button>
+          <div className="session-actions"><div className="settings-legal-links"><Link to="/privacy">Privacy Policy</Link><Link to="/terms">Terms & Conditions</Link></div><button type="button" className="danger-btn" onClick={logout}>Log out</button></div>
         </section>
       </div>
     </main>
