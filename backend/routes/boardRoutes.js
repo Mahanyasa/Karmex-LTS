@@ -2,6 +2,7 @@ const express = require("express");
 const Board = require("../models/Board");
 const Todo = require("../models/Todo");
 const User = require("../models/User");
+const FriendRequest = require("../models/FriendRequest");
 const auth = require("../middleware/auth");
 const { deleteReminderEvent } = require("../utils/googleCalendar");
 
@@ -44,12 +45,21 @@ router.get("/", async (req, res) => {
     await ensureDefaultBoard(req.userId);
 
     const boards = await Board.find({
-      user: req.userId,
-    }).sort({
-      createdAt: 1,
-    });
+      $or: [{ user: req.userId }, { "sharedWith.user": req.userId }],
+    }).populate("user", "name username avatar").populate("sharedWith.user", "name username avatar").sort({ createdAt: 1 });
 
-    res.json(boards);
+    res.json(boards.map((board) => {
+      const object = board.toObject();
+      const isOwner = String(board.user._id) === String(req.userId);
+      return {
+        ...object,
+        access: isOwner ? "owner" : "shared",
+        owner: board.user,
+        notes: isOwner ? object.notes : undefined,
+        scratchpad: isOwner ? object.scratchpad : undefined,
+        sharedWith: isOwner ? object.sharedWith : [],
+      };
+    }));
   } catch (err) {
     console.error("Fetch boards error:", err);
 
@@ -129,6 +139,39 @@ router.patch("/:id", async (req, res) => {
       message: "Failed to update board",
     });
   }
+});
+
+router.post("/:id/share", async (req, res) => {
+  try {
+    const friendUserId = req.body.userId;
+    const friendship = await FriendRequest.findOne({
+      status: "accepted",
+      $or: [{ requester: req.userId, recipient: friendUserId }, { requester: friendUserId, recipient: req.userId }],
+    });
+    if (!friendship) return res.status(403).json({ message: "Boards can only be shared with friends" });
+
+    const board = await Board.findOne({ _id: req.params.id, user: req.userId });
+    if (!board) return res.status(404).json({ message: "Board not found" });
+    if (!board.sharedWith.some((share) => String(share.user) === String(friendUserId))) {
+      board.sharedWith.push({ user: friendUserId });
+      await board.save();
+    }
+    await board.populate("sharedWith.user", "name username avatar");
+    res.json(board);
+  } catch (err) {
+    console.error("Share board error:", err.message);
+    res.status(500).json({ message: "Failed to share board" });
+  }
+});
+
+router.delete("/:id/share/:userId", async (req, res) => {
+  const board = await Board.findOneAndUpdate(
+    { _id: req.params.id, user: req.userId },
+    { $pull: { sharedWith: { user: req.params.userId } } },
+    { new: true }
+  ).populate("sharedWith.user", "name username avatar");
+  if (!board) return res.status(404).json({ message: "Board not found" });
+  res.json(board);
 });
 
 router.patch("/:id/scratchpad", async (req, res) => {

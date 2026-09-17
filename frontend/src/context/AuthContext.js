@@ -23,9 +23,10 @@ export function AuthProvider({ children }) {
     setUser(data.user);
   }
 
-  async function register(name, email, password, acceptLegal) {
+  async function register(name, username, email, password, acceptLegal) {
     const { data } = await api.post("/auth/register", {
       name,
+      username,
       email,
       password,
       acceptLegal,
@@ -58,4 +59,3 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   return useContext(AuthContext);
 }
-

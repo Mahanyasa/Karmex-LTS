@@ -10,6 +10,22 @@ function signToken(userId) {
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "30d" });
 }
 
+function normalizeUsername(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 24);
+}
+
+async function createUniqueUsername(preferred) {
+  let base = normalizeUsername(preferred) || "user";
+  if (base.length < 3) base = `${base}user`.slice(0, 24);
+  let candidate = base;
+  let suffix = 0;
+  while (await User.exists({ username: candidate })) {
+    suffix += 1;
+    candidate = `${base.slice(0, 24 - String(suffix).length)}${suffix}`;
+  }
+  return candidate;
+}
+
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
   try {
@@ -34,10 +50,19 @@ router.post("/register", async (req, res) => {
       return res.status(409).json({ message: "Email already registered" });
     }
 
+    const requestedUsername = normalizeUsername(req.body.username);
+    if (req.body.username && !/^[a-z0-9_]{3,24}$/.test(requestedUsername)) {
+      return res.status(400).json({ message: "Username must be 3-24 letters, numbers, or underscores" });
+    }
+    if (requestedUsername && await User.exists({ username: requestedUsername })) {
+      return res.status(409).json({ message: "That username is already taken" });
+    }
+    const username = requestedUsername || await createUniqueUsername(email.split("@")[0] || name);
     const user = await User.create({
       name,
       email,
       password,
+      username,
       legalAcceptance: {
         termsVersion: TERMS_VERSION,
         privacyVersion: PRIVACY_VERSION,
@@ -48,7 +73,7 @@ router.post("/register", async (req, res) => {
 
     res.status(201).json({
       token,
-      user: { id: user._id, name: user.name, email: user.email, avatar: user.avatar },
+      user: { id: user._id, name: user.name, username: user.username, email: user.email, avatar: user.avatar },
     });
   } catch (err) {
     console.error(err);
@@ -74,10 +99,14 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    if (!user.username) {
+      user.username = await createUniqueUsername(user.email.split("@")[0] || user.name);
+      await user.save();
+    }
     const token = signToken(user._id);
     res.json({
       token,
-      user: { id: user._id, name: user.name, email: user.email, avatar: user.avatar },
+      user: { id: user._id, name: user.name, username: user.username, email: user.email, avatar: user.avatar },
     });
   } catch (err) {
     console.error(err);
@@ -89,10 +118,16 @@ router.patch("/profile", auth, async (req, res) => {
   try {
     const name = String(req.body.name || "").trim();
     const avatar = req.body.avatar || null;
+    const username = normalizeUsername(req.body.username);
 
     if (!name || name.length > 80) {
       return res.status(400).json({ message: "Name must be between 1 and 80 characters" });
     }
+    if (!/^[a-z0-9_]{3,24}$/.test(username)) {
+      return res.status(400).json({ message: "Username must be 3-24 letters, numbers, or underscores" });
+    }
+    const usernameOwner = await User.findOne({ username, _id: { $ne: req.userId } });
+    if (usernameOwner) return res.status(409).json({ message: "That username is already taken" });
 
     if (
       avatar &&
@@ -105,7 +140,7 @@ router.patch("/profile", auth, async (req, res) => {
 
     const user = await User.findByIdAndUpdate(
       req.userId,
-      { name, avatar },
+      { name, username, avatar },
       { new: true, runValidators: true }
     );
 
@@ -114,6 +149,7 @@ router.patch("/profile", auth, async (req, res) => {
     res.json({
       id: user._id,
       name: user.name,
+      username: user.username,
       email: user.email,
       avatar: user.avatar,
     });
@@ -124,4 +160,3 @@ router.patch("/profile", auth, async (req, res) => {
 });
 
 module.exports = router;
-

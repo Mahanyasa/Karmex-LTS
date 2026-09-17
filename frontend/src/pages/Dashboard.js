@@ -46,6 +46,7 @@ export default function Dashboard() {
   const [sidebarMode, setSidebarMode] = useState(null);
 
   const activeBoard = boards.find((board) => board._id === activeBoardId);
+  const canEditBoard = activeBoard?.access !== "shared";
   const completedCount = todos.filter((todo) => todo.completed).length;
   const upcomingCount = todos.length - completedCount;
   const progress = todos.length ? Math.round((completedCount / todos.length) * 100) : 0;
@@ -464,9 +465,10 @@ export default function Dashboard() {
                 >
                   <span className="board-icon">{board.name.charAt(0).toUpperCase()}</span>
                   <span className="board-name">{board.name}</span>
+                  {board.access === "shared" && <span className="shared-board-mark" title={`Shared by @${board.owner?.username || "user"}`}>S</span>}
                   {board._id === activeBoardId && <span className="active-indicator" />}
                 </button>
-                <button
+                {board.access !== "shared" && <button
                   type="button"
                   className="board-delete-btn"
                   onClick={() => handleDeleteBoard(board)}
@@ -475,14 +477,14 @@ export default function Dashboard() {
                   title="Delete board"
                 >
                   ×
-                </button>
+                </button>}
               </div>
             ))}
           </div>
 
           <div className="sidebar-create-actions">
             <button type="button" className={sidebarMode === "board" ? "active" : ""} onClick={() => setSidebarMode(sidebarMode === "board" ? null : "board")}><span>+</span> New board</button>
-            <button type="button" className={sidebarMode === "task" ? "active" : ""} onClick={() => setSidebarMode(sidebarMode === "task" ? null : "task")} disabled={!activeBoardId}><span>+</span> New post-it</button>
+            <button type="button" className={sidebarMode === "task" ? "active" : ""} onClick={() => setSidebarMode(sidebarMode === "task" ? null : "task")} disabled={!activeBoardId || !canEditBoard}><span>+</span> New post-it</button>
           </div>
 
           {sidebarMode === "board" && (
@@ -542,6 +544,8 @@ export default function Dashboard() {
             githubProfile={githubProfile}
             connectGitHub={connectGitHub}
             disconnectGitHub={disconnectGitHub}
+            boards={boards}
+            reloadBoards={loadBoards}
           />
         ) : <main className="workspace">
           <header className="workspace-header">
@@ -554,7 +558,7 @@ export default function Dashboard() {
               type="button"
               className="secondary-btn"
               onClick={() => organize()}
-              disabled={busy || !activeBoardId}
+              disabled={busy || !activeBoardId || !canEditBoard}
             >
               <span aria-hidden="true">↕</span>
               Organize tasks
@@ -570,7 +574,9 @@ export default function Dashboard() {
               <span className="task-summary">{upcomingCount} remaining</span>
             </div>
 
-            <BoardScratchpad board={activeBoard} onSaved={handleScratchpadSaved} />
+            {canEditBoard ? <BoardScratchpad board={activeBoard} onSaved={handleScratchpadSaved} /> : (
+              <div className="shared-board-notice"><strong>Shared by @{activeBoard?.owner?.username}</strong><span>This board is read-only. Its private notes and scratchpad remain visible only to the owner.</span></div>
+            )}
 
             <div className="post-it-heading">
               <div><span className="eyebrow">ACTION NOTES</span><h3>Post-its</h3></div>
@@ -600,6 +606,7 @@ export default function Dashboard() {
                           type="checkbox"
                           checked={Boolean(todo.completed)}
                           onChange={() => handleToggle(todo)}
+                          disabled={!canEditBoard}
                         />
                         <span className="custom-check" />
                       </label>
@@ -619,7 +626,7 @@ export default function Dashboard() {
                           )}
                         </div>
                       </div>
-                      <button
+                      {canEditBoard && <button
                         type="button"
                         className="icon-btn delete-task"
                         onClick={() => handleDelete(todo._id)}
@@ -627,7 +634,7 @@ export default function Dashboard() {
                         title="Delete task"
                       >
                         ×
-                      </button>
+                      </button>}
                     </article>
                   );
                 })}

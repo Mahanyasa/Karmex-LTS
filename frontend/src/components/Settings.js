@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationContext";
+import SocialPanel from "./SocialPanel";
 
 function resizeAvatar(file) {
   return new Promise((resolve, reject) => {
@@ -29,11 +30,12 @@ function resizeAvatar(file) {
   });
 }
 
-export default function Settings({ googleConnected, connectGoogle, disconnectGoogle, githubConnected, githubProfile, connectGitHub, disconnectGitHub }) {
+export default function Settings({ googleConnected, connectGoogle, disconnectGoogle, githubConnected, githubProfile, connectGitHub, disconnectGitHub, boards, reloadBoards }) {
   const { user, updateProfile, logout } = useAuth();
   const { notify } = useNotifications();
   const fileInputRef = useRef(null);
   const [name, setName] = useState(user?.name || "");
+  const [username, setUsername] = useState(user?.username || "");
   const [avatar, setAvatar] = useState(user?.avatar || null);
   const [storage, setStorage] = useState({ loading: true, connected: false });
   const [saving, setSaving] = useState(false);
@@ -75,7 +77,7 @@ export default function Settings({ googleConnected, connectGoogle, disconnectGoo
     try {
       setSaving(true);
       setMessage("");
-      await updateProfile({ name, avatar });
+      await updateProfile({ name, username, avatar });
       setMessage("Profile updated.");
     } catch (err) {
       setMessage(err.response?.data?.message || "Failed to update profile");
@@ -112,6 +114,7 @@ export default function Settings({ googleConnected, connectGoogle, disconnectGoo
             </div>
 
             <label className="settings-field"><span>Display name</span><input value={name} onChange={(event) => setName(event.target.value)} maxLength="80" required /></label>
+            <label className="settings-field"><span>Unique username</span><div className="username-field"><b>@</b><input value={username} onChange={(event) => setUsername(event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))} minLength="3" maxLength="24" required /></div></label>
             <label className="settings-field"><span>Email address</span><input value={user?.email || ""} disabled /></label>
 
             <div className="settings-form-actions">
@@ -153,6 +156,8 @@ export default function Settings({ googleConnected, connectGoogle, disconnectGoo
             </article>
           </div>
         </section>
+
+        <SocialPanel boards={boards} reloadBoards={reloadBoards} />
 
         <section className="settings-panel session-panel">
           <div><span className="eyebrow">SESSION</span><h2>Account access</h2><p>Sign out of Karmex LTS on this device.</p></div>

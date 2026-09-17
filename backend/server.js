@@ -10,6 +10,7 @@ const googleRoutes = require("./routes/googleRoutes");
 const fileRoutes = require("./routes/fileRoutes");
 const githubRoutes = require("./routes/githubRoutes");
 const vaultRoutes = require("./routes/vaultRoutes");
+const socialRoutes = require("./routes/socialRoutes");
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use("/api/google", googleRoutes);
 app.use("/api/files", fileRoutes);
 app.use("/api/github", githubRoutes);
 app.use("/api/vault", vaultRoutes);
+app.use("/api/social", socialRoutes);
 
 const PORT = process.env.PORT || 3001;
 

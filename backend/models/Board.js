@@ -26,6 +26,11 @@ const boardSchema = new mongoose.Schema(
       body: { type: String, default: "", maxlength: 100000 },
       updatedAt: { type: Date, default: null },
     },
+
+    sharedWith: [{
+      user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+      sharedAt: { type: Date, default: Date.now },
+    }],
   },
   {
     timestamps: true,

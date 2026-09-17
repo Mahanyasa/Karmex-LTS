@@ -6,6 +6,7 @@ export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -17,7 +18,7 @@ export default function Register() {
     setError("");
     setBusy(true);
     try {
-      await register(name, email, password, acceptLegal);
+      await register(name, username, email, password, acceptLegal);
       navigate("/");
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed");
@@ -42,6 +43,9 @@ export default function Register() {
           required
         />
 
+        <label>Unique username</label>
+        <input type="text" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))} minLength={3} maxLength={24} placeholder="your_username" required />
+
         <label>Email</label>
         <input
           type="email"
@@ -61,7 +65,7 @@ export default function Register() {
 
         <label className="legal-consent">
           <input type="checkbox" checked={acceptLegal} onChange={(e) => setAcceptLegal(e.target.checked)} required />
-          <span>I agree to the <Link to="/terms" target="_blank">Terms v1.4</Link> and acknowledge the <Link to="/privacy" target="_blank">Privacy Policy v1.4</Link>.</span>
+          <span>I agree to the <Link to="/terms" target="_blank">Terms v1.5</Link> and acknowledge the <Link to="/privacy" target="_blank">Privacy Policy v1.5</Link>.</span>
         </label>
 
         <button type="submit" disabled={busy || !acceptLegal}>

@@ -53,15 +53,14 @@ async function ensureDefaultBoard(userId) {
   return board;
 }
 
-async function resolveBoard(userId, boardId) {
+async function resolveBoard(userId, boardId, requireOwner = false) {
   if (!boardId) {
     return ensureDefaultBoard(userId);
   }
 
-  const board = await Board.findOne({
-    _id: boardId,
-    user: userId,
-  });
+  const board = await Board.findOne(requireOwner
+    ? { _id: boardId, user: userId }
+    : { _id: boardId, $or: [{ user: userId }, { "sharedWith.user": userId }] });
 
   return board;
 }
@@ -167,10 +166,7 @@ router.get("/", async (req, res) => {
       });
     }
 
-    const todos = await Todo.find({
-      user: req.userId,
-      board: board._id,
-    }).sort({
+    const todos = await Todo.find({ board: board._id }).sort({
       sortOrder: 1,
       createdAt: 1,
     });
@@ -210,7 +206,7 @@ router.post("/", async (req, res) => {
       duration,
     } = req.body;
 
-    const board = await resolveBoard(req.userId, boardId);
+    const board = await resolveBoard(req.userId, boardId, true);
 
     if (!board) {
       return res.status(404).json({
@@ -314,7 +310,7 @@ router.post("/", async (req, res) => {
 router.post("/github-issue", async (req, res) => {
   try {
     const { boardId, title, repository, issueNumber, url } = req.body;
-    const board = await resolveBoard(req.userId, boardId);
+    const board = await resolveBoard(req.userId, boardId, true);
 
     if (!board) return res.status(404).json({ message: "Board not found" });
     if (!title?.trim() || !repository?.trim() || !Number.isInteger(Number(issueNumber))) {
@@ -377,7 +373,7 @@ router.post("/dictate", async (req, res) => {
   try {
     const { boardId, transcript } = req.body;
 
-    const board = await resolveBoard(req.userId, boardId);
+    const board = await resolveBoard(req.userId, boardId, true);
 
     if (!board) {
       return res.status(404).json({
@@ -489,7 +485,7 @@ router.post("/dictate", async (req, res) => {
 
 router.post("/organize", async (req, res) => {
   try {
-    const board = await resolveBoard(req.userId, req.body.boardId);
+    const board = await resolveBoard(req.userId, req.body.boardId, true);
 
     if (!board) {
       return res.status(404).json({
@@ -589,7 +585,7 @@ router.patch("/:id", async (req, res) => {
     });
 
     if (req.body.boardId !== undefined) {
-      const board = await resolveBoard(req.userId, req.body.boardId);
+      const board = await resolveBoard(req.userId, req.body.boardId, true);
 
       if (!board) {
         return res.status(404).json({
