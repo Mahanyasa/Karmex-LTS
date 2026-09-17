@@ -265,10 +265,12 @@ export default function Dashboard() {
         window.location.pathname,
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     loadTodos(activeBoardId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBoardId]);
 
   /* =========================================================
