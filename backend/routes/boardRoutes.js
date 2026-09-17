@@ -208,6 +208,33 @@ router.patch("/:id/notes", async (req, res) => {
   }
 });
 
+router.patch("/:id/layout", async (req, res) => {
+  try {
+    const allowedWidgets = new Set(["metrics", "calendar", "workspace", "tasks", "upcoming", "progress"]);
+    if (!Array.isArray(req.body.layout)) return res.status(400).json({ message: "Layout must be an array" });
+    const seen = new Set();
+    const layout = req.body.layout.slice(0, 12).map((item, index) => {
+      const id = String(item.id || "");
+      if (!allowedWidgets.has(id) || seen.has(id)) throw new Error("Invalid dashboard widget");
+      seen.add(id);
+      return {
+        id,
+        width: Math.max(3, Math.min(12, Number(item.width) || 6)),
+        height: Math.max(1, Math.min(8, Number(item.height) || 3)),
+        visible: item.visible !== false,
+        order: index,
+      };
+    });
+    const board = await Board.findOneAndUpdate({ _id: req.params.id, user: req.userId }, { dashboardLayout: layout }, { new: true });
+    if (!board) return res.status(404).json({ message: "Board not found" });
+    res.json(board);
+  } catch (err) {
+    if (err.message === "Invalid dashboard widget") return res.status(400).json({ message: err.message });
+    console.error("Save board layout error:", err.message);
+    res.status(500).json({ message: "Failed to save board layout" });
+  }
+});
+
 router.delete("/:id", async (req, res) => {
   try {
     const board = await Board.findOne({

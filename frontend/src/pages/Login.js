@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -15,7 +15,7 @@ export default function Login() {
     setError("");
     setBusy(true);
     try {
-      await login(email, password);
+      await login(username, password);
       navigate("/");
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
@@ -32,11 +32,13 @@ export default function Login() {
 
         {error && <div className="error-banner">{error}</div>}
 
-        <label>Email</label>
+        <label>Username</label>
         <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/^@/, "").replace(/[^a-z0-9_]/g, ""))}
+          autoComplete="username"
+          placeholder="your_username"
           required
         />
 
@@ -45,6 +47,7 @@ export default function Login() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
           required
         />
 

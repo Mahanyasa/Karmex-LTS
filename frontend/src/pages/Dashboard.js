@@ -5,7 +5,7 @@ import useDictation from "../components/useDictation";
 import FileStorage from "../components/FileStorage";
 import Settings from "../components/Settings";
 import GitHubDashboard from "../components/GitHubDashboard";
-import BoardScratchpad from "../components/BoardScratchpad";
+import DynamicBoard from "../components/DynamicBoard";
 import PasswordVault from "../components/PasswordVault";
 import { useNotifications } from "../context/NotificationContext";
 
@@ -19,13 +19,6 @@ function formatDateTime(iso) {
     hour: "numeric",
     minute: "2-digit",
   });
-}
-
-const POST_IT_COLORS = ["yellow", "pink", "blue", "mint", "lavender", "peach"];
-
-function postItTilt(id) {
-  const total = Array.from(id || "").reduce((sum, character) => sum + character.charCodeAt(0), 0);
-  return `${(total % 5) - 2}deg`;
 }
 
 export default function Dashboard() {
@@ -44,6 +37,7 @@ export default function Dashboard() {
   const [githubProfile, setGithubProfile] = useState(null);
   const [activeView, setActiveView] = useState("workspace");
   const [sidebarMode, setSidebarMode] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const activeBoard = boards.find((board) => board._id === activeBoardId);
   const canEditBoard = activeBoard?.access !== "shared";
@@ -448,7 +442,8 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <div className={activeView !== "workspace" ? "dashboard-layout storage-layout" : "dashboard-layout"}>
+      <div className={activeView !== "workspace" ? "dashboard-layout storage-layout" : sidebarOpen ? "dashboard-layout" : "dashboard-layout sidebar-collapsed"}>
+        {activeView === "workspace" && <button type="button" className="sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label={sidebarOpen ? "Close workspace sidebar" : "Open workspace sidebar"} title={sidebarOpen ? "Close sidebar" : "Open sidebar"}>{sidebarOpen ? "‹" : "›"}</button>}
         {activeView === "workspace" && <aside className="sidebar">
           <div className="sidebar-heading">
             <span>Boards</span>
@@ -565,82 +560,7 @@ export default function Dashboard() {
             </button>
           </header>
 
-          <section className="tasks-section whiteboard-section">
-            <div className="section-title-row">
-              <div>
-                <span className="eyebrow">BOARD CANVAS</span>
-                <h2>Scratchpad & post-its</h2>
-              </div>
-              <span className="task-summary">{upcomingCount} remaining</span>
-            </div>
-
-            {canEditBoard ? <BoardScratchpad board={activeBoard} onSaved={handleScratchpadSaved} /> : (
-              <div className="shared-board-notice"><strong>Shared by @{activeBoard?.owner?.username}</strong><span>This board is read-only. Its private notes and scratchpad remain visible only to the owner.</span></div>
-            )}
-
-            <div className="post-it-heading">
-              <div><span className="eyebrow">ACTION NOTES</span><h3>Post-its</h3></div>
-              <span>{todos.length} notes</span>
-            </div>
-
-            {loading ? (
-              <div className="empty-state">Loading your tasks...</div>
-            ) : todos.length === 0 ? (
-              <div className="empty-state">
-                <span className="empty-icon">+</span>
-                <h3>This board is ready</h3>
-                <p>Add your first task above or capture a few by voice.</p>
-              </div>
-            ) : (
-              <div className="task-list whiteboard">
-                {todos.map((todo, index) => {
-                  return (
-                    <article
-                      key={todo._id}
-                      className={`task-row post-it post-it-${POST_IT_COLORS[index % POST_IT_COLORS.length]} ${todo.completed ? "completed" : ""}`}
-                      style={{ "--post-it-tilt": postItTilt(todo._id) }}
-                    >
-                      <span className="post-it-tape" aria-hidden="true" />
-                      <label className="task-check">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(todo.completed)}
-                          onChange={() => handleToggle(todo)}
-                          disabled={!canEditBoard}
-                        />
-                        <span className="custom-check" />
-                      </label>
-                      <div className="task-content">
-                        <strong>{todo.text}</strong>
-                        <div className="task-meta">
-                          {todo.reminderDateTime && (
-                            <span className="post-it-reminder">Remind {formatDateTime(todo.reminderDateTime)}</span>
-                          )}
-                          {!todo.reminderDateTime && todo.timeHint && <span>{todo.timeHint}</span>}
-                          <span className={`priority ${todo.priority}`}>{todo.priority}</span>
-                          {todo.googleEventId && <span className="calendar-status">Calendar set</span>}
-                          {todo.source?.type === "github" && (
-                            <a className="github-task-link" href={todo.source.url} target="_blank" rel="noreferrer">
-                              {todo.source.repository} #{todo.source.issueNumber} ↗
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                      {canEditBoard && <button
-                        type="button"
-                        className="icon-btn delete-task"
-                        onClick={() => handleDelete(todo._id)}
-                        aria-label="Delete task"
-                        title="Delete task"
-                      >
-                        ×
-                      </button>}
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </section>
+          <DynamicBoard board={activeBoard} todos={todos} loading={loading} canEdit={canEditBoard} onToggle={handleToggle} onDelete={handleDelete} onBoardSaved={handleScratchpadSaved} />
         </main>}
       </div>
     </div>
