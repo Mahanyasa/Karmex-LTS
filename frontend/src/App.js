@@ -8,11 +8,13 @@ import Dashboard from "./pages/Dashboard";
 import { PrivacyPolicy, TermsConditions } from "./pages/Legal";
 import { NotificationProvider } from "./context/NotificationContext";
 import Profile from "./pages/Profile";
+import OperationHud from "./components/OperationHud";
 
 export default function App() {
   return (
     <AuthProvider>
       <NotificationProvider>
+       <OperationHud />
        <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />

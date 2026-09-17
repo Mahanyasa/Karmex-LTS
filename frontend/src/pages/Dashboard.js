@@ -11,6 +11,7 @@ import ResourceUtilization from "../components/ResourceUtilization";
 import CommandCenter from "../components/CommandCenter";
 import CommandPalette from "../components/CommandPalette";
 import AssistantPanel from "../components/AssistantPanel";
+import useProactiveIntelligence from "../components/useProactiveIntelligence";
 import { useNotifications } from "../context/NotificationContext";
 
 function formatDateTime(iso) {
@@ -46,6 +47,7 @@ export default function Dashboard() {
   const [assistantOpen, setAssistantOpen] = useState(true);
 
   const activeBoard = boards.find((board) => board._id === activeBoardId);
+  const intelligence = useProactiveIntelligence({ board: activeBoard, todos, githubConnected });
   const canEditBoard = activeBoard?.access !== "shared";
   const completedCount = todos.filter((todo) => todo.completed).length;
   const upcomingCount = todos.length - completedCount;
@@ -588,7 +590,7 @@ export default function Dashboard() {
           <DynamicBoard board={activeBoard} todos={todos} loading={loading} canEdit={canEditBoard} onToggle={handleToggle} onDelete={handleDelete} onBoardSaved={handleScratchpadSaved} onTodosChanged={() => loadTodos(activeBoardId)} />
         </main>}
       </div>
-      <AssistantPanel open={assistantOpen} onClose={() => setAssistantOpen(false)} activeView={activeView} board={activeBoard} todos={todos} githubConnected={githubConnected} onNavigate={setActiveView} />
+      <AssistantPanel open={assistantOpen} onClose={() => setAssistantOpen(false)} activeView={activeView} board={activeBoard} todos={todos} alerts={intelligence.alerts} onDismiss={intelligence.dismiss} onNavigate={setActiveView} />
       <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} boards={boards} onView={setActiveView} onBoard={openBoardFromCommand} onAssistant={() => setAssistantOpen((value) => !value)} />
     </div>
   );
