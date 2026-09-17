@@ -30,7 +30,7 @@ export default function Register() {
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
         <h1>Create account</h1>
-        <p className="subtitle">Set up your daily planner</p>
+        <p className="subtitle">Set up your Karmex LTS workspace</p>
 
         {error && <div className="error-banner">{error}</div>}
 
@@ -61,7 +61,7 @@ export default function Register() {
 
         <label className="legal-consent">
           <input type="checkbox" checked={acceptLegal} onChange={(e) => setAcceptLegal(e.target.checked)} required />
-          <span>I agree to the <Link to="/terms" target="_blank">Terms v1.1</Link> and acknowledge the <Link to="/privacy" target="_blank">Privacy Policy v1.1</Link>.</span>
+          <span>I agree to the <Link to="/terms" target="_blank">Terms v1.2</Link> and acknowledge the <Link to="/privacy" target="_blank">Privacy Policy v1.2</Link>.</span>
         </label>
 
         <button type="submit" disabled={busy || !acceptLegal}>

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api";
 import { useAuth } from "../context/AuthContext";
+import { useNotifications } from "../context/NotificationContext";
 
 function resizeAvatar(file) {
   return new Promise((resolve, reject) => {
@@ -30,12 +31,13 @@ function resizeAvatar(file) {
 
 export default function Settings({ googleConnected, connectGoogle, disconnectGoogle, githubConnected, githubProfile, connectGitHub, disconnectGitHub }) {
   const { user, updateProfile, logout } = useAuth();
+  const { notify } = useNotifications();
   const fileInputRef = useRef(null);
   const [name, setName] = useState(user?.name || "");
   const [avatar, setAvatar] = useState(user?.avatar || null);
   const [storage, setStorage] = useState({ loading: true, connected: false });
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const setMessage = (message) => notify(message, /failed|error|choose/i.test(message) ? "error" : "success");
 
   useEffect(() => {
     async function loadStorageStatus() {
@@ -91,8 +93,6 @@ export default function Settings({ googleConnected, connectGoogle, disconnectGoo
           <p>Manage your identity, connections, and private workspace services.</p>
         </div>
       </header>
-
-      {message && <button className="info-banner" type="button" onClick={() => setMessage("")}><span>{message}</span><span>×</span></button>}
 
       <div className="settings-grid">
         <section className="settings-panel profile-panel">
@@ -155,7 +155,7 @@ export default function Settings({ googleConnected, connectGoogle, disconnectGoo
         </section>
 
         <section className="settings-panel session-panel">
-          <div><span className="eyebrow">SESSION</span><h2>Account access</h2><p>Sign out of MK Life on this device.</p></div>
+          <div><span className="eyebrow">SESSION</span><h2>Account access</h2><p>Sign out of Karmex LTS on this device.</p></div>
           <div className="session-actions"><div className="settings-legal-links"><Link to="/privacy">Privacy Policy</Link><Link to="/terms">Terms & Conditions</Link></div><button type="button" className="danger-btn" onClick={logout}>Log out</button></div>
         </section>
       </div>

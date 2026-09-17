@@ -17,7 +17,7 @@ async function createReminderEvent(user, todo) {
 
   const event = {
     summary: todo.text,
-    description: `Task from your Daily Planner (priority: ${todo.priority})`,
+    description: `Task from Karmex LTS (priority: ${todo.priority})`,
     start: { dateTime: start.toISOString() },
     end: { dateTime: end.toISOString() },
     reminders: {

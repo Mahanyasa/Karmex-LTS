@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import api from "../api";
+import { useNotifications } from "../context/NotificationContext";
 
 function formatSize(bytes) {
   if (!bytes) return "0 B";
@@ -14,6 +15,7 @@ function fileKind(name) {
 }
 
 export default function FileStorage() {
+  const { notify, confirm } = useNotifications();
   const inputRef = useRef(null);
   const [folder, setFolder] = useState("");
   const [folders, setFolders] = useState([]);
@@ -22,7 +24,10 @@ export default function FileStorage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const [message, setMessage] = useState("");
+  const setMessage = useCallback((message) => {
+    if (!message) return;
+    notify(message, /failed|error/i.test(message) ? "error" : "success");
+  }, [notify]);
 
   const loadFiles = useCallback(async (nextFolder = folder) => {
     setLoading(true);
@@ -37,7 +42,7 @@ export default function FileStorage() {
     } finally {
       setLoading(false);
     }
-  }, [folder]);
+  }, [folder, setMessage]);
 
   useEffect(() => {
     loadFiles("");
@@ -99,7 +104,13 @@ export default function FileStorage() {
   }
 
   async function deleteFile(file) {
-    if (!window.confirm(`Delete ${file.name}?`)) return;
+    const approved = await confirm({
+      title: "Delete file?",
+      message: `${file.name} will be permanently removed from private storage.`,
+      confirmLabel: "Delete file",
+      danger: true,
+    });
+    if (!approved) return;
     try {
       await api.delete("/files", { params: { key: file.key } });
       setFiles((current) => current.filter((item) => item.key !== file.key));
@@ -121,8 +132,6 @@ export default function FileStorage() {
         </button>
         <input ref={inputRef} className="hidden-file-input" type="file" multiple onChange={(event) => uploadFiles(event.target.files)} />
       </header>
-
-      {message && <button className="info-banner" type="button" onClick={() => setMessage("")}><span>{message}</span><span>×</span></button>}
 
       <section
         className={dragging ? "upload-zone dragging" : "upload-zone"}
@@ -179,4 +188,3 @@ export default function FileStorage() {
     </main>
   );
 }
-

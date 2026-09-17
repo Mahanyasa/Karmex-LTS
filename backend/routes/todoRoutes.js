@@ -310,6 +310,57 @@ router.post("/", async (req, res) => {
   }
 });
 
+// POST /api/todos/github-issue
+router.post("/github-issue", async (req, res) => {
+  try {
+    const { boardId, title, repository, issueNumber, url } = req.body;
+    const board = await resolveBoard(req.userId, boardId);
+
+    if (!board) return res.status(404).json({ message: "Board not found" });
+    if (!title?.trim() || !repository?.trim() || !Number.isInteger(Number(issueNumber))) {
+      return res.status(400).json({ message: "Valid GitHub issue details are required" });
+    }
+
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      return res.status(400).json({ message: "Valid GitHub issue URL is required" });
+    }
+    if (parsedUrl.protocol !== "https:" || parsedUrl.hostname !== "github.com") {
+      return res.status(400).json({ message: "GitHub issue URL must use github.com" });
+    }
+
+    const existing = await Todo.findOne({
+      user: req.userId,
+      board: board._id,
+      "source.type": "github",
+      "source.url": parsedUrl.toString(),
+    });
+    if (existing) return res.status(409).json({ message: "This issue is already on that board" });
+
+    const todo = await Todo.create({
+      user: req.userId,
+      board: board._id,
+      text: title.trim(),
+      priority: "medium",
+      reminderDateTime: null,
+      createdForDate: todayBucket(),
+      source: {
+        type: "github",
+        url: parsedUrl.toString(),
+        repository: repository.trim(),
+        issueNumber: Number(issueNumber),
+      },
+    });
+
+    res.status(201).json(todo);
+  } catch (err) {
+    console.error("GitHub issue import error:", err);
+    res.status(500).json({ message: "Failed to add GitHub issue to workspace" });
+  }
+});
+
 /* =========================================================
    DICTATION
 ========================================================= */

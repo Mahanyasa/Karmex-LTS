@@ -28,7 +28,7 @@ export default function Login() {
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
         <h1>Welcome back</h1>
-        <p className="subtitle">Log in to your daily planner</p>
+        <p className="subtitle">Log in to Karmex LTS</p>
 
         {error && <div className="error-banner">{error}</div>}
 
@@ -60,4 +60,3 @@ export default function Login() {
     </div>
   );
 }
-

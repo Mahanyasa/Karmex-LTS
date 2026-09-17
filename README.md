@@ -1,4 +1,4 @@
-# Daily Planner (MERN)
+# Karmex LTS
 
 Login-based board planner with voice capture, Google Calendar reminders,
 and private S3 file storage. A local rule-based organizer sorts tasks by
@@ -160,4 +160,3 @@ and has no third-party dependency or ToS risk. If you ever want to swap
 in a real AI call later, that file is the single place to change —
 replace `organizeTasks`/`parseDictation` with an API request and keep the
 same return shape.
-

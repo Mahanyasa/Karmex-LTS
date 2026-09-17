@@ -5,6 +5,7 @@ import useDictation from "../components/useDictation";
 import FileStorage from "../components/FileStorage";
 import Settings from "../components/Settings";
 import GitHubDashboard from "../components/GitHubDashboard";
+import { useNotifications } from "../context/NotificationContext";
 
 function formatDateTime(iso) {
   if (!iso) return "";
@@ -27,6 +28,7 @@ function postItTilt(id) {
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
+  const { notify, confirm } = useNotifications();
   const [boards, setBoards] = useState([]);
   const [activeBoardId, setActiveBoardId] = useState("");
   const [newBoardName, setNewBoardName] = useState("");
@@ -35,7 +37,6 @@ export default function Dashboard() {
   const [newStart, setNewStart] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
   const [googleConnected, setGoogleConnected] = useState(false);
   const [githubConnected, setGithubConnected] = useState(false);
   const [githubProfile, setGithubProfile] = useState(null);
@@ -45,6 +46,11 @@ export default function Dashboard() {
   const completedCount = todos.filter((todo) => todo.completed).length;
   const upcomingCount = todos.length - completedCount;
   const progress = todos.length ? Math.round((completedCount / todos.length) * 100) : 0;
+  const setMessage = (message) => {
+    if (!message) return;
+    const type = /failed|error|invalid|required|wrong|cancelled|choose/i.test(message) ? "error" : "success";
+    notify(message, type);
+  };
 
   const nextTask = useMemo(
     () =>
@@ -181,9 +187,12 @@ export default function Dashboard() {
 
   async function handleDeleteBoard(board) {
     const taskCount = board._id === activeBoardId ? todos.length : "all";
-    const confirmed = window.confirm(
-      `Delete ${board.name} and ${taskCount} task${taskCount === 1 ? "" : "s"}? This cannot be undone.`,
-    );
+    const confirmed = await confirm({
+      title: `Delete ${board.name}?`,
+      message: `This will permanently delete ${taskCount} task${taskCount === 1 ? "" : "s"} from this board.`,
+      confirmLabel: "Delete board",
+      danger: true,
+    });
 
     if (!confirmed) return;
 
@@ -374,9 +383,9 @@ export default function Dashboard() {
   return (
     <div className="app-shell">
       <nav className="topbar">
-        <a className="brand" href="/" aria-label="MK Life home">
-          <span className="brand-mark">MK</span>
-          <span>MK Life</span>
+        <a className="brand" href="/" aria-label="Karmex LTS home">
+          <span className="brand-mark">KL</span>
+          <span>Karmex LTS</span>
         </a>
 
         <div className="topbar-center">
@@ -484,7 +493,7 @@ export default function Dashboard() {
         </aside>}
 
         {activeView === "files" ? <FileStorage /> : activeView === "github" ? (
-          <GitHubDashboard connected={githubConnected} connectGitHub={connectGitHub} />
+          <GitHubDashboard connected={githubConnected} connectGitHub={connectGitHub} boards={boards} activeBoardId={activeBoardId} />
         ) : activeView === "settings" ? (
           <Settings
             googleConnected={googleConnected}
@@ -512,13 +521,6 @@ export default function Dashboard() {
               Organize tasks
             </button>
           </header>
-
-          {message && (
-            <button className="info-banner" type="button" onClick={() => setMessage("")}>
-              <span>{message}</span>
-              <span aria-hidden="true">×</span>
-            </button>
-          )}
 
           <section className="stats-grid" aria-label="Board overview">
             <div className="stat-block">
@@ -581,7 +583,7 @@ export default function Dashboard() {
                 <span className={listening ? "mic-orb listening" : "mic-orb"} aria-hidden="true">●</span>
                 <div>
                   <strong>{listening ? "Listening now" : "Capture with your voice"}</strong>
-                  <span>Speak naturally and MK Life will build your tasks.</span>
+                  <span>Speak naturally and Karmex LTS will build your tasks.</span>
                 </div>
               </div>
               <div className="dictation-actions">
@@ -655,6 +657,11 @@ export default function Dashboard() {
                           {!todo.reminderDateTime && todo.timeHint && <span>{todo.timeHint}</span>}
                           <span className={`priority ${todo.priority}`}>{todo.priority}</span>
                           {todo.googleEventId && <span className="calendar-status">Calendar set</span>}
+                          {todo.source?.type === "github" && (
+                            <a className="github-task-link" href={todo.source.url} target="_blank" rel="noreferrer">
+                              {todo.source.repository} #{todo.source.issueNumber} ↗
+                            </a>
+                          )}
                         </div>
                       </div>
                       <button

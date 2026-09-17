@@ -6,11 +6,13 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import { PrivacyPolicy, TermsConditions } from "./pages/Legal";
+import { NotificationProvider } from "./context/NotificationContext";
 
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <NotificationProvider>
+       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -26,8 +28,8 @@ export default function App() {
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
+       </BrowserRouter>
+      </NotificationProvider>
     </AuthProvider>
   );
 }
-

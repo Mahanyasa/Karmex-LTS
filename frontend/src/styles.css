@@ -1171,6 +1171,32 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .gh-state.closed { color: #ff7d89; border-color: rgba(255, 125, 137, 0.35); }
 .gh-state.merged { color: #c7a0ff; border-color: rgba(199, 160, 255, 0.35); }
 .commit-sha { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; text-transform: none; }
+.activity-row-action { grid-template-columns: 72px minmax(0, 1fr) 90px auto; }
+.issue-board-picker { display: flex; align-items: center; gap: 10px; }
+.issue-board-picker > span { color: var(--muted); font-size: 9px; font-weight: 900; text-transform: uppercase; }
+.issue-board-picker select { max-width: 180px; padding: 7px 26px 7px 9px; color: var(--text); background: #0a0d12; border: 1px solid var(--border); border-radius: 5px; font-size: 10px; }
+.issue-actions { display: flex; align-items: center; gap: 8px; }
+.issue-open-link { color: var(--muted-strong); font-size: 9px; font-weight: 900; text-decoration: none; text-transform: uppercase; }
+.issue-open-link:hover { color: var(--text); }
+.issue-add-btn { width: 30px; height: 30px; padding: 0; color: var(--accent-ink); background: var(--accent); border: 0; border-radius: 5px; font-size: 18px; font-weight: 800; cursor: pointer; }
+.issue-add-btn:disabled { opacity: 0.55; cursor: wait; }
+.github-task-link { width: fit-content; color: #1c5140; font-size: 10px; font-weight: 900; text-decoration: none; }
+.github-task-link:hover { text-decoration: underline; }
+
+.snackbar-region { position: fixed; right: 22px; bottom: 22px; z-index: 100; width: min(390px, calc(100vw - 32px)); pointer-events: none; }
+.snackbar { min-height: 58px; display: grid; grid-template-columns: 8px minmax(0, 1fr) 30px; align-items: center; gap: 12px; padding: 12px 12px 12px 16px; color: var(--text); background: #151922; border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5); pointer-events: auto; animation: snackbar-in 0.2s ease-out; }
+.snackbar-indicator { width: 8px; height: 8px; background: #8fa0b8; border-radius: 50%; box-shadow: 0 0 12px rgba(143, 160, 184, 0.55); }
+.snackbar-success .snackbar-indicator { background: var(--success); box-shadow: 0 0 12px rgba(105, 215, 164, 0.65); }
+.snackbar-error .snackbar-indicator { background: var(--danger); box-shadow: 0 0 12px rgba(255, 107, 120, 0.65); }
+.snackbar > span:nth-child(2) { overflow-wrap: anywhere; font-size: 12px; line-height: 1.45; }
+.snackbar button { width: 30px; height: 30px; padding: 0; color: var(--muted); background: transparent; border: 0; font-size: 20px; cursor: pointer; }
+.confirm-backdrop { position: fixed; inset: 0; z-index: 110; display: grid; place-items: center; padding: 20px; background: rgba(3, 5, 8, 0.78); backdrop-filter: blur(8px); }
+.confirm-dialog { width: min(100%, 430px); padding: 30px; background: #11151d; border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: 0 35px 100px rgba(0, 0, 0, 0.65); }
+.confirm-symbol { width: 38px; height: 38px; display: grid; place-items: center; color: #ffc3c8; background: rgba(255, 107, 120, 0.1); border: 1px solid rgba(255, 107, 120, 0.3); border-radius: 7px; font-weight: 900; }
+.confirm-dialog h2 { margin: 20px 0 9px; font-size: 21px; }
+.confirm-dialog p { margin: 0; color: var(--muted-strong); font-size: 12px; line-height: 1.65; }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 28px; }
+@keyframes snackbar-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 .legal-page { min-height: 100vh; background: var(--bg); }
 .legal-nav {
@@ -1289,6 +1315,11 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   .repo-row time { grid-column: 2; grid-row: 1; }
   .activity-row { grid-template-columns: 64px minmax(0, 1fr); padding: 15px 16px; }
   .activity-row time { grid-column: 2; text-align: left; }
+  .activity-row-action { grid-template-columns: 64px minmax(0, 1fr) auto; }
+  .activity-row-action time { display: none; }
+  .issue-actions { grid-column: 3; grid-row: 1 / span 2; }
+  .issue-board-picker { align-items: flex-end; flex-direction: column; }
+  .snackbar-region { right: 16px; bottom: 78px; left: 16px; width: auto; }
   .connection-row { grid-template-columns: 38px minmax(0, 1fr); padding: 15px 0; }
   .connection-control { grid-column: 2; align-items: flex-start; }
   .session-panel { align-items: flex-start; flex-direction: column; }

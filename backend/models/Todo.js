@@ -71,6 +71,13 @@ const todoSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+
+    source: {
+      type: { type: String, enum: ["github"], default: null },
+      url: { type: String, default: null },
+      repository: { type: String, default: null },
+      issueNumber: { type: Number, default: null },
+    },
   },
   {
     timestamps: true,

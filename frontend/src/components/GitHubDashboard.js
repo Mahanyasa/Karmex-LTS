@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../api";
+import { useNotifications } from "../context/NotificationContext";
 
 function relativeDate(value) {
   if (!value) return "Unknown";
@@ -15,12 +16,42 @@ function ExternalLink({ href, children, className = "" }) {
   return <a className={className} href={href} target="_blank" rel="noreferrer">{children}</a>;
 }
 
-export default function GitHubDashboard({ connected, connectGitHub }) {
+export default function GitHubDashboard({ connected, connectGitHub, boards, activeBoardId }) {
+  const { notify } = useNotifications();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(connected);
   const [error, setError] = useState("");
   const [tab, setTab] = useState("overview");
   const [owner, setOwner] = useState("all");
+  const [targetBoardId, setTargetBoardId] = useState(activeBoardId || "");
+  const [addingIssueId, setAddingIssueId] = useState(null);
+
+  useEffect(() => {
+    if (!targetBoardId && activeBoardId) setTargetBoardId(activeBoardId);
+  }, [activeBoardId, targetBoardId]);
+
+  async function addIssueToWorkspace(issue) {
+    if (!targetBoardId) {
+      notify("Create or select a workspace board first.", "error");
+      return;
+    }
+    try {
+      setAddingIssueId(issue.id);
+      await api.post("/todos/github-issue", {
+        boardId: targetBoardId,
+        title: issue.title,
+        repository: issue.repository,
+        issueNumber: issue.number,
+        url: issue.htmlUrl,
+      });
+      const boardName = boards.find((board) => board._id === targetBoardId)?.name || "workspace";
+      notify(`Issue #${issue.number} added to ${boardName}.`, "success");
+    } catch (err) {
+      notify(err.response?.data?.message || "Failed to add issue to workspace", "error");
+    } finally {
+      setAddingIssueId(null);
+    }
+  }
 
   useEffect(() => {
     if (!connected) {
@@ -131,7 +162,11 @@ export default function GitHubDashboard({ connected, connectGitHub }) {
       )}
 
       {(tab === "overview" || tab === "issues") && (
-        <ActivitySection eyebrow="ISSUES" title="Issue status" items={data.issues} empty="No recent issues" render={(issue) => (
+        <ActivitySection eyebrow="ISSUES" title="Issue status" items={data.issues} empty="No recent issues" actionHeader={(
+          <label className="issue-board-picker"><span>Add issues to</span><select value={targetBoardId} onChange={(event) => setTargetBoardId(event.target.value)}><option value="">Select board</option>{boards.map((board) => <option key={board._id} value={board._id}>{board.name}</option>)}</select></label>
+        )} action={(issue) => (
+          <div className="issue-actions"><ExternalLink href={issue.htmlUrl} className="issue-open-link">Open</ExternalLink><button type="button" className="issue-add-btn" disabled={addingIssueId === issue.id} onClick={() => addIssueToWorkspace(issue)} title="Add issue to workspace">{addingIssueId === issue.id ? "…" : "+"}</button></div>
+        )} render={(issue) => (
           <><span className={`gh-state ${issue.state}`}>{issue.state}</span><div><strong>{issue.title}</strong><span>{issue.repository} · #{issue.number} by {issue.author}</span></div><time>{relativeDate(issue.updatedAt)}</time></>
         )} />
       )}
@@ -145,12 +180,12 @@ export default function GitHubDashboard({ connected, connectGitHub }) {
   );
 }
 
-function ActivitySection({ eyebrow, title, items, empty, render }) {
+function ActivitySection({ eyebrow, title, items, empty, render, action, actionHeader }) {
   return (
     <section className="github-section activity-section">
-      <div className="github-section-heading"><div><span className="eyebrow">{eyebrow}</span><h2>{title}</h2></div><span>{items.length} recent</span></div>
+      <div className="github-section-heading"><div><span className="eyebrow">{eyebrow}</span><h2>{title}</h2></div>{actionHeader || <span>{items.length} recent</span>}</div>
       <div className="activity-list">
-        {items.length ? items.map((item) => <ExternalLink key={item.id || item.sha} href={item.htmlUrl} className="activity-row">{render(item)}</ExternalLink>) : <div className="github-empty">{empty}</div>}
+        {items.length ? items.map((item) => action ? <div key={item.id || item.sha} className="activity-row activity-row-action">{render(item)}{action(item)}</div> : <ExternalLink key={item.id || item.sha} href={item.htmlUrl} className="activity-row">{render(item)}</ExternalLink>) : <div className="github-empty">{empty}</div>}
       </div>
     </section>
   );

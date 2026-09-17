@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "todo-frontend",
+      name: "karmex-lts-frontend",
       cwd: "D:/source-personal/todo/frontend",
       script: "cmd.exe",
       args: "/c serve -s build -l 3000",

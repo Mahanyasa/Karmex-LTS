@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "todo-backend",
+      name: "karmex-lts-backend",
       script: "server.js",
       instances: 1,
       autorestart: true,
