@@ -9,6 +9,13 @@ const todoSchema = new mongoose.Schema(
       index: true,
     },
 
+    board: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Board",
+      default: null,
+      index: true,
+    },
+
     text: {
       type: String,
       required: true,
@@ -53,7 +60,7 @@ const todoSchema = new mongoose.Schema(
       default: 0,
     },
 
-    // YYYY-MM-DD bucket used by the daily planner.
+    // YYYY-MM-DD bucket kept for existing data compatibility.
     createdForDate: {
       type: String,
       required: true,
@@ -69,5 +76,7 @@ const todoSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+todoSchema.index({ user: 1, board: 1, sortOrder: 1, createdAt: 1 });
 
 module.exports = mongoose.model("Todo", todoSchema);
