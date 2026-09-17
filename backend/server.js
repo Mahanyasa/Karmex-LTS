@@ -2,9 +2,9 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
-const scheduleDailyReset = require("./cron/dailyReset");
 
 const authRoutes = require("./routes/authRoutes");
+const boardRoutes = require("./routes/boardRoutes");
 const todoRoutes = require("./routes/todoRoutes");
 const googleRoutes = require("./routes/googleRoutes");
 
@@ -27,13 +27,13 @@ app.get("/api/health", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/boards", boardRoutes);
 app.use("/api/todos", todoRoutes);
 app.use("/api/google", googleRoutes);
 
 const PORT = process.env.PORT || 3001;
 
 connectDB().then(() => {
-  scheduleDailyReset();
   app.listen(PORT, () => {
     console.log(`[server] Listening on port ${PORT}`);
   });
