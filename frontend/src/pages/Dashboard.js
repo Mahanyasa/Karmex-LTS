@@ -1,49 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import api from "../api";
 import { useAuth } from "../context/AuthContext";
 import useDictation from "../components/useDictation";
 
-/* =========================================================
-   STICKY NOTE SETTINGS
-========================================================= */
-
-const NOTE_COLORS = [
-  "pink",
-  "blue",
-  "yellow",
-  "green",
-  "purple",
-  "orange",
-];
-
-// Stable small rotation per note
-function rotationFor(id) {
-  let hash = 0;
-
-  for (let i = 0; i < id.length; i++) {
-    hash =
-      (hash * 31 + id.charCodeAt(i)) >>> 0;
-  }
-
-  return (hash % 7) - 3;
-}
-
-/* =========================================================
-   DATE/TIME HELPERS
-========================================================= */
-
-// Format ISO datetime into:
-// Sep 18, 2:30 PM
 function formatDateTime(iso) {
   if (!iso) return "";
-
-  const d = new Date(iso);
-
-  if (Number.isNaN(d.getTime())) {
-    return "";
-  }
-
-  return d.toLocaleString(undefined, {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString(undefined, {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -51,80 +15,39 @@ function formatDateTime(iso) {
   });
 }
 
-// Calculate end time using:
-// reminderDateTime + duration
-function calculateEndTime(
-  reminderDateTime,
-  duration,
-) {
-  if (!reminderDateTime || !duration) {
-    return null;
-  }
-
-  const start =
-    new Date(reminderDateTime);
-
-  if (
-    Number.isNaN(start.getTime())
-  ) {
-    return null;
-  }
-
-  return new Date(
-    start.getTime() +
-      Number(duration) * 60 * 1000,
-  ).toISOString();
+function calculateEndTime(reminderDateTime, duration) {
+  if (!reminderDateTime || !duration) return null;
+  const start = new Date(reminderDateTime);
+  if (Number.isNaN(start.getTime())) return null;
+  return new Date(start.getTime() + Number(duration) * 60 * 1000).toISOString();
 }
-
-/* =========================================================
-   DASHBOARD
-========================================================= */
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
+  const [boards, setBoards] = useState([]);
+  const [activeBoardId, setActiveBoardId] = useState("");
+  const [newBoardName, setNewBoardName] = useState("");
+  const [todos, setTodos] = useState([]);
+  const [newText, setNewText] = useState("");
+  const [newStart, setNewStart] = useState("");
+  const [newEnd, setNewEnd] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [googleConnected, setGoogleConnected] = useState(false);
 
-  const [boards, setBoards] =
-    useState([]);
+  const activeBoard = boards.find((board) => board._id === activeBoardId);
+  const completedCount = todos.filter((todo) => todo.completed).length;
+  const upcomingCount = todos.length - completedCount;
+  const progress = todos.length ? Math.round((completedCount / todos.length) * 100) : 0;
 
-  const [activeBoardId, setActiveBoardId] =
-    useState("");
-
-  const [newBoardName, setNewBoardName] =
-    useState("");
-
-  const [todos, setTodos] =
-    useState([]);
-
-  const [newText, setNewText] =
-    useState("");
-
-  const [newStart, setNewStart] =
-    useState("");
-
-  const [newEnd, setNewEnd] =
-    useState("");
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [busy, setBusy] =
-    useState(false);
-
-  const [message, setMessage] =
-    useState("");
-
-  const [
-    googleConnected,
-    setGoogleConnected,
-  ] = useState(false);
-
-  const activeBoard = boards.find(
-    (board) => board._id === activeBoardId,
+  const nextTask = useMemo(
+    () =>
+      todos
+        .filter((todo) => !todo.completed && todo.reminderDateTime)
+        .sort((a, b) => new Date(a.reminderDateTime) - new Date(b.reminderDateTime))[0],
+    [todos],
   );
-
-  /* =========================================================
-     DICTATION
-  ========================================================= */
 
   const {
     listening,
@@ -136,31 +59,14 @@ export default function Dashboard() {
     reset,
   } = useDictation();
 
-  /* =========================================================
-     LOAD BOARDS / TODOS
-  ========================================================= */
-
   async function loadBoards() {
     try {
-      const { data } =
-        await api.get("/boards");
-
+      const { data } = await api.get("/boards");
       setBoards(data);
-
-      setActiveBoardId((current) =>
-        current || data[0]?._id || "",
-      );
+      setActiveBoardId((current) => current || data[0]?._id || "");
     } catch (err) {
-      console.error(
-        "Load boards error:",
-        err,
-      );
-
-      setMessage(
-        err.response?.data?.message ||
-          "Failed to load boards",
-      );
-
+      console.error("Load boards error:", err);
+      setMessage(err.response?.data?.message || "Failed to load boards");
       setLoading(false);
     }
   }
@@ -173,97 +79,44 @@ export default function Dashboard() {
     }
 
     setLoading(true);
-
     try {
-      const { data } =
-        await api.get("/todos", {
-          params: { boardId },
-        });
-
+      const { data } = await api.get("/todos", { params: { boardId } });
       setTodos(data);
     } catch (err) {
-      console.error(
-        "Load todos error:",
-        err,
-      );
-
-      setMessage(
-        err.response?.data?.message ||
-          "Failed to load tasks",
-      );
+      console.error("Load todos error:", err);
+      setMessage(err.response?.data?.message || "Failed to load tasks");
     } finally {
       setLoading(false);
     }
   }
 
-  /* =========================================================
-     GOOGLE STATUS
-  ========================================================= */
-
   async function loadGoogleStatus() {
     try {
-      const { data } =
-        await api.get(
-          "/google/status",
-        );
-
-      setGoogleConnected(
-        Boolean(data.connected),
-      );
+      const { data } = await api.get("/google/status");
+      setGoogleConnected(Boolean(data.connected));
     } catch (err) {
-      console.error(
-        "Google status error:",
-        err,
-      );
-
-      // Non-fatal
+      console.error("Google status error:", err);
     }
   }
-
-  /* =========================================================
-     INITIAL LOAD
-  ========================================================= */
 
   useEffect(() => {
     loadBoards();
     loadGoogleStatus();
 
-    const params =
-      new URLSearchParams(
-        window.location.search,
-      );
+    const params = new URLSearchParams(window.location.search);
+    const googleParam = params.get("google");
 
-    const googleParam =
-      params.get("google");
-
-    if (
-      googleParam === "connected"
-    ) {
-      setMessage(
-        "Google connected — new tasks will send phone reminders.",
-      );
-
+    if (googleParam === "connected") {
+      setMessage("Google connected. New tasks will send phone reminders.");
       setGoogleConnected(true);
-    } else if (
-      googleParam === "denied"
-    ) {
-      setMessage(
-        "Google connection was cancelled.",
-      );
-    } else if (
-      googleParam === "error"
-    ) {
-      setMessage(
-        "Something went wrong connecting Google. Try again.",
-      );
+    } else if (googleParam === "denied") {
+      setMessage("Google connection was cancelled.");
+    } else if (googleParam === "error") {
+      setMessage("Something went wrong connecting Google. Try again.");
     }
 
     if (googleParam) {
-      window.history.replaceState(
-        {},
-        "",
-        window.location.pathname,
-      );
+      window.history.replaceState({}, "", window.location.pathname);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -273,13 +126,8 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBoardId]);
 
-  /* =========================================================
-     BOARDS
-  ========================================================= */
-
-  async function handleCreateBoard(e) {
-    e.preventDefault();
-
+  async function handleCreateBoard(event) {
+    event.preventDefault();
     const name = newBoardName.trim();
 
     if (!name) {
@@ -290,103 +138,46 @@ export default function Dashboard() {
     try {
       setBusy(true);
       setMessage("");
-
-      const { data } =
-        await api.post("/boards", {
-          name,
-        });
-
-      setBoards((prev) => [
-        ...prev,
-        data,
-      ]);
+      const { data } = await api.post("/boards", { name });
+      setBoards((current) => [...current, data]);
       setActiveBoardId(data._id);
       setNewBoardName("");
       setMessage("Board created.");
     } catch (err) {
-      console.error(
-        "Create board error:",
-        err,
-      );
-
-      setMessage(
-        err.response?.data?.message ||
-          "Failed to create board",
-      );
+      console.error("Create board error:", err);
+      setMessage(err.response?.data?.message || "Failed to create board");
     } finally {
       setBusy(false);
     }
   }
 
-  /* =========================================================
-     CONNECT GOOGLE
-  ========================================================= */
-
   async function connectGoogle() {
     try {
-      const { data } =
-        await api.get(
-          "/google/auth-url",
-        );
-
+      const { data } = await api.get("/google/auth-url");
       if (!data?.url) {
-        setMessage(
-          "Google authorization URL was not returned.",
-        );
-
+        setMessage("Google authorization URL was not returned.");
         return;
       }
-
-      window.location.href =
-        data.url;
+      window.location.href = data.url;
     } catch (err) {
-      console.error(
-        "Google connect error:",
-        err,
-      );
-
-      setMessage(
-        err.response?.data?.message ||
-          "Failed to start Google connection",
-      );
+      console.error("Google connect error:", err);
+      setMessage(err.response?.data?.message || "Failed to start Google connection");
     }
   }
-
-  /* =========================================================
-     DISCONNECT GOOGLE
-  ========================================================= */
 
   async function disconnectGoogle() {
     try {
-      await api.post(
-        "/google/disconnect",
-      );
-
+      await api.post("/google/disconnect");
       setGoogleConnected(false);
-
-      setMessage(
-        "Google disconnected.",
-      );
+      setMessage("Google disconnected.");
     } catch (err) {
-      console.error(
-        "Google disconnect error:",
-        err,
-      );
-
-      setMessage(
-        err.response?.data?.message ||
-          "Failed to disconnect Google",
-      );
+      console.error("Google disconnect error:", err);
+      setMessage(err.response?.data?.message || "Failed to disconnect Google");
     }
   }
 
-  /* =========================================================
-     ADD MANUAL TODO
-  ========================================================= */
-
-  async function handleAddManual(e) {
-    e.preventDefault();
-
+  async function handleAddManual(event) {
+    event.preventDefault();
     setMessage("");
 
     if (!activeBoardId) {
@@ -394,288 +185,107 @@ export default function Dashboard() {
       return;
     }
 
-    /* -----------------------------
-       Validate task
-    ----------------------------- */
-
     if (!newText.trim()) {
-      setMessage(
-        "Task text is required",
-      );
-
+      setMessage("Task text is required");
       return;
     }
-
-    /* -----------------------------
-       Start date/time is required
-    ----------------------------- */
 
     if (!newStart) {
-      setMessage(
-        "Start date and time are required",
-      );
-
+      setMessage("Start date and time are required");
       return;
     }
 
-    const startDate =
-      new Date(newStart);
-
-    if (
-      Number.isNaN(
-        startDate.getTime(),
-      )
-    ) {
-      setMessage(
-        "Invalid start date/time",
-      );
-
+    const startDate = new Date(newStart);
+    if (Number.isNaN(startDate.getTime())) {
+      setMessage("Invalid start date/time");
       return;
     }
-
-    /* -----------------------------
-       Calculate duration
-    ----------------------------- */
 
     let duration = 30;
-
     if (newEnd) {
-      const endDate =
-        new Date(newEnd);
-
-      if (
-        Number.isNaN(
-          endDate.getTime(),
-        )
-      ) {
-        setMessage(
-          "Invalid end date/time",
-        );
-
+      const endDate = new Date(newEnd);
+      if (Number.isNaN(endDate.getTime())) {
+        setMessage("Invalid end date/time");
         return;
       }
-
-      if (
-        endDate <= startDate
-      ) {
-        setMessage(
-          "End time must be after start time",
-        );
-
+      if (endDate <= startDate) {
+        setMessage("End time must be after start time");
         return;
       }
-
-      duration = Math.round(
-        (
-          endDate.getTime() -
-          startDate.getTime()
-        ) /
-          (1000 * 60),
-      );
+      duration = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
     }
-
-    /* -----------------------------
-       Create request
-    ----------------------------- */
 
     try {
       setBusy(true);
-
-      const payload = {
+      const { data } = await api.post("/todos", {
         boardId: activeBoardId,
-
-        text:
-          newText.trim(),
-
+        text: newText.trim(),
         priority: "medium",
-
-        // Browser converts local date/time
-        // into ISO UTC.
-        reminderDateTime:
-          startDate.toISOString(),
-
+        reminderDateTime: startDate.toISOString(),
         duration,
-      };
-
-      console.log(
-        "Creating todo:",
-        payload,
-      );
-
-      const { data } =
-        await api.post(
-          "/todos",
-          payload,
-        );
-
-      console.log(
-        "Created todo:",
-        data,
-      );
-
-      /* -----------------------------
-         Reset form
-      ----------------------------- */
+      });
 
       setNewText("");
       setNewStart("");
       setNewEnd("");
-
-      /* -----------------------------
-         Refresh organized list
-      ----------------------------- */
-
       await organize(activeBoardId);
 
-      if (
-        googleConnected &&
-        data?.googleEventId
-      ) {
-        setMessage(
-          "Task added and Google Calendar reminder created.",
-        );
-      } else if (
-        googleConnected
-      ) {
-        setMessage(
-          "Task added. Google reminder was not created.",
-        );
+      if (googleConnected && data?.googleEventId) {
+        setMessage("Task added and Google Calendar reminder created.");
+      } else if (googleConnected) {
+        setMessage("Task added. Google reminder was not created.");
       } else {
-        setMessage(
-          "Task added.",
-        );
+        setMessage("Task added.");
       }
     } catch (err) {
-      console.error(
-        "Add todo error:",
-        err,
-      );
-
-      setMessage(
-        err.response?.data
-          ?.message ||
-          "Failed to add task",
-      );
+      console.error("Add todo error:", err);
+      setMessage(err.response?.data?.message || "Failed to add task");
     } finally {
       setBusy(false);
     }
   }
 
-  /* =========================================================
-     TOGGLE COMPLETE
-  ========================================================= */
-
-  async function handleToggle(
-    todo,
-  ) {
+  async function handleToggle(todo) {
     try {
-      const { data } =
-        await api.patch(
-          `/todos/${todo._id}`,
-          {
-            completed:
-              !todo.completed,
-          },
-        );
-
-      setTodos((prev) =>
-        prev.map((t) =>
-          t._id === data._id
-            ? data
-            : t,
-        ),
+      const { data } = await api.patch(`/todos/${todo._id}`, {
+        completed: !todo.completed,
+      });
+      setTodos((current) =>
+        current.map((item) => (item._id === data._id ? data : item)),
       );
     } catch (err) {
-      console.error(
-        "Toggle todo error:",
-        err,
-      );
-
-      setMessage(
-        err.response?.data
-          ?.message ||
-          "Failed to update task",
-      );
+      console.error("Toggle todo error:", err);
+      setMessage(err.response?.data?.message || "Failed to update task");
     }
   }
-
-  /* =========================================================
-     DELETE TODO
-  ========================================================= */
 
   async function handleDelete(id) {
     try {
-      await api.delete(
-        `/todos/${id}`,
-      );
-
-      setTodos((prev) =>
-        prev.filter(
-          (t) => t._id !== id,
-        ),
-      );
-
-      setMessage(
-        "Task deleted.",
-      );
+      await api.delete(`/todos/${id}`);
+      setTodos((current) => current.filter((todo) => todo._id !== id));
+      setMessage("Task deleted.");
     } catch (err) {
-      console.error(
-        "Delete todo error:",
-        err,
-      );
-
-      setMessage(
-        err.response?.data
-          ?.message ||
-          "Failed to delete task",
-      );
+      console.error("Delete todo error:", err);
+      setMessage(err.response?.data?.message || "Failed to delete task");
     }
   }
-
-  /* =========================================================
-     ORGANIZE
-  ========================================================= */
 
   async function organize(boardId = activeBoardId) {
-    if (!boardId) {
-      return null;
-    }
+    if (!boardId) return null;
 
     try {
-      const { data } =
-        await api.post(
-          "/todos/organize",
-          { boardId },
-        );
-
+      const { data } = await api.post("/todos/organize", { boardId });
       setTodos(data);
-
       return data;
     } catch (err) {
-      console.error(
-        "Organize error:",
-        err,
-      );
-
-      setMessage(
-        err.response?.data
-          ?.message ||
-          "Failed to organize tasks",
-      );
-
+      console.error("Organize error:", err);
+      setMessage(err.response?.data?.message || "Failed to organize tasks");
       return null;
     }
   }
 
-  /* =========================================================
-     DICTATION SUBMIT
-  ========================================================= */
-
   async function submitDictation() {
-    if (!transcript.trim()) {
-      return;
-    }
-
+    if (!transcript.trim()) return;
     if (!activeBoardId) {
       setMessage("Choose a board first");
       return;
@@ -685,524 +295,300 @@ export default function Dashboard() {
     setMessage("");
 
     try {
-      /*
-       * Send browser's current date/time
-       * and timezone.
-       *
-       * This allows the backend to
-       * eventually resolve:
-       *
-       * "at 5pm"
-       * "tomorrow at 10am"
-       * etc.
-       */
-
       const now = new Date();
-
-      const timezone =
-        Intl.DateTimeFormat()
-          .resolvedOptions()
-          .timeZone;
-
-      const { data } =
-        await api.post(
-          "/todos/dictate",
-          {
-            boardId: activeBoardId,
-
-            transcript:
-              transcript.trim(),
-
-            clientDateTime:
-              now.toISOString(),
-
-            timezone,
-          },
-        );
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const { data } = await api.post("/todos/dictate", {
+        boardId: activeBoardId,
+        transcript: transcript.trim(),
+        clientDateTime: now.toISOString(),
+        timezone,
+      });
 
       setTodos(data.todos);
-
-      setMessage(
-        `Added ${data.created} task(s) from dictation.`,
-      );
-
+      setMessage(`Added ${data.created} task(s) from dictation.`);
       reset();
     } catch (err) {
-      console.error(
-        "Dictation error:",
-        err,
-      );
-
-      setMessage(
-        err.response?.data
-          ?.message ||
-          "Failed to process dictation",
-      );
+      console.error("Dictation error:", err);
+      setMessage(err.response?.data?.message || "Failed to process dictation");
     } finally {
       setBusy(false);
     }
   }
 
-  /* =========================================================
-     UI
-  ========================================================= */
-
   return (
-    <div className="dashboard">
+    <div className="app-shell">
+      <nav className="topbar">
+        <a className="brand" href="/" aria-label="MK Life home">
+          <span className="brand-mark">MK</span>
+          <span>MK Life</span>
+        </a>
 
-      {/* ===============================================
-          HEADER
-      =============================================== */}
-
-      <header className="dashboard-header">
-        <div>
-          <h1>{activeBoard?.name || "Boards"}</h1>
-
-          <p className="subtitle">
-            Hi {user?.name} — choose a board
-            and plan from there
-          </p>
+        <div className="topbar-center">
+          <span className="nav-link active">Workspace</span>
+          <span className="nav-link">Boards</span>
         </div>
 
-        <div className="header-actions">
-
-          {googleConnected ? (
-            <button
-              type="button"
-              className="ghost-btn"
-              onClick={
-                disconnectGoogle
-              }
-            >
-              📱 Google connected
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="primary-btn"
-              onClick={
-                connectGoogle
-              }
-            >
-              📱 Connect Google
-              reminders
-            </button>
-          )}
-
+        <div className="account-actions">
           <button
             type="button"
-            className="ghost-btn"
-            onClick={logout}
+            className={googleConnected ? "integration-btn connected" : "integration-btn"}
+            onClick={googleConnected ? disconnectGoogle : connectGoogle}
           >
-            Log out
+            <span className="status-dot" />
+            {googleConnected ? "Google connected" : "Connect Google"}
           </button>
-
-        </div>
-      </header>
-
-      {/* ===============================================
-          BOARDS
-      =============================================== */}
-
-      <section className="board-panel">
-        <div className="board-tabs">
-          {boards.map((board) => (
-            <button
-              key={board._id}
-              type="button"
-              className={
-                board._id === activeBoardId
-                  ? "board-tab active"
-                  : "board-tab"
-              }
-              onClick={() =>
-                setActiveBoardId(board._id)
-              }
-            >
-              {board.name}
-            </button>
-          ))}
-        </div>
-
-        <form
-          className="board-form"
-          onSubmit={handleCreateBoard}
-        >
-          <input
-            type="text"
-            placeholder="New board name"
-            value={newBoardName}
-            onChange={(e) =>
-              setNewBoardName(
-                e.target.value,
-              )
-            }
-          />
-
-          <button
-            type="submit"
-            disabled={busy}
-          >
-            Add board
+          <span className="user-avatar" title={user?.name || "Account"}>
+            {(user?.name || "U").charAt(0).toUpperCase()}
+          </span>
+          <button type="button" className="icon-btn logout-btn" onClick={logout} title="Log out">
+            <span aria-hidden="true">↗</span>
           </button>
-        </form>
-      </section>
-
-      {/* ===============================================
-          MESSAGE
-      =============================================== */}
-
-      {message && (
-        <div className="info-banner">
-          {message}
         </div>
-      )}
+      </nav>
 
-      {/* ===============================================
-          DICTATION
-      =============================================== */}
+      <div className="dashboard-layout">
+        <aside className="sidebar">
+          <div className="sidebar-heading">
+            <span>Boards</span>
+            <span className="count-badge">{boards.length}</span>
+          </div>
 
-      <section className="dictation-panel">
+          <div className="board-list">
+            {boards.map((board) => (
+              <button
+                key={board._id}
+                type="button"
+                className={board._id === activeBoardId ? "board-nav active" : "board-nav"}
+                onClick={() => setActiveBoardId(board._id)}
+              >
+                <span className="board-icon">{board.name.charAt(0).toUpperCase()}</span>
+                <span className="board-name">{board.name}</span>
+                {board._id === activeBoardId && <span className="active-indicator" />}
+              </button>
+            ))}
+          </div>
 
-        <h2>Dictate to {activeBoard?.name || "this board"}</h2>
+          <form className="new-board-form" onSubmit={handleCreateBoard}>
+            <label htmlFor="board-name">Create board</label>
+            <div className="inline-input">
+              <input
+                id="board-name"
+                type="text"
+                placeholder="Board name"
+                value={newBoardName}
+                onChange={(event) => setNewBoardName(event.target.value)}
+              />
+              <button type="submit" disabled={busy} title="Add board">+</button>
+            </div>
+          </form>
 
-        {!supported && (
-          <p className="error-banner">
-            Voice dictation isn't
-            supported in this browser.
-            Try Chrome or Edge.
-          </p>
-        )}
+          <div className="sidebar-footer">
+            <div className="profile-row">
+              <span className="user-avatar small">
+                {(user?.name || "U").charAt(0).toUpperCase()}
+              </span>
+              <div>
+                <strong>{user?.name || "Your account"}</strong>
+                <span>Personal workspace</span>
+              </div>
+            </div>
+          </div>
+        </aside>
 
-        {dictationError && (
-          <p className="error-banner">
-            Mic error:{" "}
-            {dictationError}
-          </p>
-        )}
-
-        <div className="dictation-controls">
-
-          <button
-            type="button"
-            className={
-              listening
-                ? "mic-btn listening"
-                : "mic-btn"
-            }
-            onClick={
-              listening
-                ? stop
-                : start
-            }
-            disabled={
-              !supported || busy || !activeBoardId
-            }
-          >
-            {listening
-              ? "Stop listening"
-              : "Start dictation"}
-          </button>
-
-          {transcript && (
+        <main className="workspace">
+          <header className="workspace-header">
+            <div>
+              <div className="eyebrow">CURRENT BOARD</div>
+              <h1>{activeBoard?.name || "Your workspace"}</h1>
+              <p>Plan clearly, protect your time, and finish what matters.</p>
+            </div>
             <button
               type="button"
-              className="primary-btn"
-              onClick={
-                submitDictation
-              }
+              className="secondary-btn"
+              onClick={() => organize()}
               disabled={busy || !activeBoardId}
             >
-              {busy
-                ? "Organizing..."
-                : "Add & organize"}
+              <span aria-hidden="true">↕</span>
+              Organize tasks
+            </button>
+          </header>
+
+          {message && (
+            <button className="info-banner" type="button" onClick={() => setMessage("")}>
+              <span>{message}</span>
+              <span aria-hidden="true">×</span>
             </button>
           )}
 
-        </div>
+          <section className="stats-grid" aria-label="Board overview">
+            <div className="stat-block">
+              <span className="stat-label">Open tasks</span>
+              <strong>{upcomingCount}</strong>
+              <span className="stat-detail">{todos.length} total on this board</span>
+            </div>
+            <div className="stat-block">
+              <span className="stat-label">Completed</span>
+              <strong>{completedCount}</strong>
+              <span className="stat-detail">{progress}% board progress</span>
+            </div>
+            <div className="stat-block wide">
+              <span className="stat-label">Up next</span>
+              <strong className="next-task-name">{nextTask?.text || "Nothing scheduled"}</strong>
+              <span className="stat-detail">
+                {nextTask ? formatDateTime(nextTask.reminderDateTime) : "Add a time to your next task"}
+              </span>
+            </div>
+          </section>
 
-        {transcript && (
-          <div className="transcript-box">
-            <strong>
-              Heard:
-            </strong>{" "}
-            {transcript}
-          </div>
-        )}
+          <section className="composer-section">
+            <div className="section-title-row">
+              <div>
+                <span className="eyebrow">QUICK CAPTURE</span>
+                <h2>Add to {activeBoard?.name || "board"}</h2>
+              </div>
+              <div className="capture-mode">
+                <span className="mode active">Task</span>
+                <span className="mode">Schedule</span>
+              </div>
+            </div>
 
-        <p className="hint">
-          Try: "Call mom at 5pm,
-          then finish report urgent
-          for 1 hour, and buy
-          groceries"
-        </p>
+            <form className="task-composer" onSubmit={handleAddManual}>
+              <div className="task-input-wrap">
+                <span className="input-plus">+</span>
+                <input
+                  type="text"
+                  placeholder="What needs to get done?"
+                  value={newText}
+                  onChange={(event) => setNewText(event.target.value)}
+                  required
+                />
+              </div>
+              <div className="schedule-fields">
+                <label>
+                  <span>Starts</span>
+                  <input
+                    type="datetime-local"
+                    value={newStart}
+                    onChange={(event) => setNewStart(event.target.value)}
+                    required
+                  />
+                </label>
+                <label>
+                  <span>Ends</span>
+                  <input
+                    type="datetime-local"
+                    value={newEnd}
+                    onChange={(event) => setNewEnd(event.target.value)}
+                    min={newStart || undefined}
+                  />
+                </label>
+                <button type="submit" className="accent-btn" disabled={busy || !activeBoardId}>
+                  {busy ? "Adding..." : "Add task"}
+                </button>
+              </div>
+            </form>
 
-        {!googleConnected && (
-          <p className="hint">
-            Connect Google above to
-            get these as phone
-            reminders.
-          </p>
-        )}
-
-      </section>
-
-      {/* ===============================================
-          MANUAL TASK FORM
-      =============================================== */}
-
-      <form
-        className="add-form"
-        onSubmit={
-          handleAddManual
-        }
-      >
-
-        <input
-          type="text"
-          placeholder={
-            activeBoard
-              ? `Add a task to ${activeBoard.name}...`
-              : "Add a task..."
-          }
-          value={newText}
-          onChange={(e) =>
-            setNewText(
-              e.target.value,
-            )
-          }
-          required
-        />
-
-        <label className="field-label">
-          Start
-
-          <input
-            type="datetime-local"
-            value={newStart}
-            onChange={(e) =>
-              setNewStart(
-                e.target.value,
-              )
-            }
-            required
-          />
-        </label>
-
-        <label className="field-label">
-          End
-
-          <input
-            type="datetime-local"
-            value={newEnd}
-            onChange={(e) =>
-              setNewEnd(
-                e.target.value,
-              )
-            }
-            min={
-              newStart ||
-              undefined
-            }
-          />
-        </label>
-
-        <button
-          type="submit"
-          disabled={busy || !activeBoardId}
-        >
-          {busy
-            ? "Adding..."
-            : "Add"}
-        </button>
-
-      </form>
-
-      {/* ===============================================
-          ORGANIZE
-      =============================================== */}
-
-      <div className="list-actions">
-
-        <button
-          type="button"
-          className="ghost-btn"
-          onClick={() => organize()}
-          disabled={busy || !activeBoardId}
-        >
-          Re-organize board
-        </button>
-
-      </div>
-
-      {/* ===============================================
-          TODO LIST
-      =============================================== */}
-
-      {loading ? (
-
-        <p>
-          Loading tasks...
-        </p>
-
-      ) : todos.length === 0 ? (
-
-        <p className="empty-state">
-          No tasks on this board yet.
-          Dictate or add one.
-        </p>
-
-      ) : (
-
-        <div className="sticky-board">
-
-          {todos.map(
-            (todo, idx) => {
-
-              const color =
-                NOTE_COLORS[
-                  idx %
-                    NOTE_COLORS.length
-                ];
-
-              const rotation =
-                rotationFor(
-                  todo._id,
-                );
-
-              const endDateTime =
-                calculateEndTime(
-                  todo.reminderDateTime,
-                  todo.duration,
-                );
-
-              return (
-                <div
-                  key={todo._id}
-                  className={`sticky-note note-${color} ${
-                    todo.completed
-                      ? "completed"
-                      : ""
-                  }`}
-                  style={{
-                    "--rotate":
-                      `${rotation}deg`,
-                  }}
-                >
-
-                  {/* DELETE */}
-
+            <div className="dictation-strip">
+              <div className="dictation-copy">
+                <span className={listening ? "mic-orb listening" : "mic-orb"} aria-hidden="true">●</span>
+                <div>
+                  <strong>{listening ? "Listening now" : "Capture with your voice"}</strong>
+                  <span>Speak naturally and MK Life will build your tasks.</span>
+                </div>
+              </div>
+              <div className="dictation-actions">
+                {transcript && (
                   <button
                     type="button"
-                    className="sticky-delete"
-                    onClick={() =>
-                      handleDelete(
-                        todo._id,
-                      )
-                    }
-                    aria-label="Delete task"
+                    className="secondary-btn"
+                    onClick={submitDictation}
+                    disabled={busy || !activeBoardId}
                   >
-                    ×
+                    Add transcript
                   </button>
+                )}
+                <button
+                  type="button"
+                  className={listening ? "voice-btn listening" : "voice-btn"}
+                  onClick={listening ? stop : start}
+                  disabled={!supported || busy || !activeBoardId}
+                >
+                  {listening ? "Stop" : "Start dictation"}
+                </button>
+              </div>
+            </div>
 
-                  {/* CHECKBOX + TEXT */}
+            {transcript && <div className="transcript-box"><strong>Heard:</strong> {transcript}</div>}
+            {!supported && <p className="error-banner">Voice dictation is not supported in this browser. Try Chrome or Edge.</p>}
+            {dictationError && <p className="error-banner">Mic error: {dictationError}</p>}
+          </section>
 
-                  <label className="sticky-check">
+          <section className="tasks-section">
+            <div className="section-title-row">
+              <div>
+                <span className="eyebrow">BOARD TASKS</span>
+                <h2>Focus list</h2>
+              </div>
+              <span className="task-summary">{upcomingCount} remaining</span>
+            </div>
 
-                    <input
-                      type="checkbox"
-                      checked={
-                        Boolean(
-                          todo.completed,
-                        )
-                      }
-                      onChange={() =>
-                        handleToggle(
-                          todo,
-                        )
-                      }
-                    />
-
-                    <span className="sticky-text">
-                      {todo.text}
-                    </span>
-
-                  </label>
-
-                  {/* =================================
-                      META
-                  ================================= */}
-
-                  <div className="sticky-meta">
-
-                    {/* REAL REMINDER DATE/TIME */}
-
-                    {todo.reminderDateTime && (
-                      <span className="chip time-chip">
-
-                        {formatDateTime(
-                          todo.reminderDateTime,
-                        )}
-
-                        {endDateTime
-                          ? ` - ${formatDateTime(
-                              endDateTime,
-                            )}`
-                          : ""}
-
-                      </span>
-                    )}
-
-                    {/* DICTATION TIME HINT */}
-
-                    {!todo.reminderDateTime &&
-                      todo.timeHint && (
-                        <span className="chip">
-                          {
-                            todo.timeHint
-                          }
-                        </span>
-                      )}
-
-                    {/* DURATION */}
-
-                    {todo.duration && (
-                      <span className="chip">
-                        {todo.duration}m
-                      </span>
-                    )}
-
-                    {/* PRIORITY */}
-
-                    <span
-                      className={`chip priority-chip ${
-                        todo.priority
-                      }`}
+            {loading ? (
+              <div className="empty-state">Loading your tasks...</div>
+            ) : todos.length === 0 ? (
+              <div className="empty-state">
+                <span className="empty-icon">+</span>
+                <h3>This board is ready</h3>
+                <p>Add your first task above or capture a few by voice.</p>
+              </div>
+            ) : (
+              <div className="task-list">
+                {todos.map((todo) => {
+                  const endDateTime = calculateEndTime(todo.reminderDateTime, todo.duration);
+                  return (
+                    <article
+                      key={todo._id}
+                      className={todo.completed ? "task-row completed" : "task-row"}
                     >
-                      {todo.priority}
-                    </span>
-
-                    {/* GOOGLE REMINDER */}
-
-                    {todo.googleEventId && (
-                      <span
-                        className="chip reminder-chip"
-                        title="Google Calendar reminder set"
+                      <label className="task-check">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(todo.completed)}
+                          onChange={() => handleToggle(todo)}
+                        />
+                        <span className="custom-check" />
+                      </label>
+                      <div className="task-content">
+                        <strong>{todo.text}</strong>
+                        <div className="task-meta">
+                          {todo.reminderDateTime && (
+                            <span>
+                              {formatDateTime(todo.reminderDateTime)}
+                              {endDateTime ? ` – ${formatDateTime(endDateTime)}` : ""}
+                            </span>
+                          )}
+                          {!todo.reminderDateTime && todo.timeHint && <span>{todo.timeHint}</span>}
+                          {todo.duration && <span>{todo.duration} min</span>}
+                          <span className={`priority ${todo.priority}`}>{todo.priority}</span>
+                          {todo.googleEventId && <span className="calendar-status">Calendar set</span>}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="icon-btn delete-task"
+                        onClick={() => handleDelete(todo._id)}
+                        aria-label="Delete task"
+                        title="Delete task"
                       >
-                        🔔
-                      </span>
-                    )}
-
-                  </div>
-
-                </div>
-              );
-            },
-          )}
-
-        </div>
-      )}
-
+                        ×
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </main>
+      </div>
     </div>
   );
 }
