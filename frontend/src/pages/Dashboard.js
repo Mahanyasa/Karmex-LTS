@@ -52,7 +52,6 @@ function formatDateTime(iso) {
 }
 
 // Calculate end time using:
-//
 // reminderDateTime + duration
 function calculateEndTime(
   reminderDateTime,
@@ -84,6 +83,15 @@ function calculateEndTime(
 export default function Dashboard() {
   const { user, logout } = useAuth();
 
+  const [boards, setBoards] =
+    useState([]);
+
+  const [activeBoardId, setActiveBoardId] =
+    useState("");
+
+  const [newBoardName, setNewBoardName] =
+    useState("");
+
   const [todos, setTodos] =
     useState([]);
 
@@ -110,6 +118,10 @@ export default function Dashboard() {
     setGoogleConnected,
   ] = useState(false);
 
+  const activeBoard = boards.find(
+    (board) => board._id === activeBoardId,
+  );
+
   /* =========================================================
      DICTATION
   ========================================================= */
@@ -125,15 +137,48 @@ export default function Dashboard() {
   } = useDictation();
 
   /* =========================================================
-     LOAD TODOS
+     LOAD BOARDS / TODOS
   ========================================================= */
 
-  async function loadTodos() {
+  async function loadBoards() {
+    try {
+      const { data } =
+        await api.get("/boards");
+
+      setBoards(data);
+
+      setActiveBoardId((current) =>
+        current || data[0]?._id || "",
+      );
+    } catch (err) {
+      console.error(
+        "Load boards error:",
+        err,
+      );
+
+      setMessage(
+        err.response?.data?.message ||
+          "Failed to load boards",
+      );
+
+      setLoading(false);
+    }
+  }
+
+  async function loadTodos(boardId = activeBoardId) {
+    if (!boardId) {
+      setTodos([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { data } =
-        await api.get("/todos");
+        await api.get("/todos", {
+          params: { boardId },
+        });
 
       setTodos(data);
     } catch (err) {
@@ -180,7 +225,7 @@ export default function Dashboard() {
   ========================================================= */
 
   useEffect(() => {
-    loadTodos();
+    loadBoards();
     loadGoogleStatus();
 
     const params =
@@ -221,6 +266,55 @@ export default function Dashboard() {
       );
     }
   }, []);
+
+  useEffect(() => {
+    loadTodos(activeBoardId);
+  }, [activeBoardId]);
+
+  /* =========================================================
+     BOARDS
+  ========================================================= */
+
+  async function handleCreateBoard(e) {
+    e.preventDefault();
+
+    const name = newBoardName.trim();
+
+    if (!name) {
+      setMessage("Board name is required");
+      return;
+    }
+
+    try {
+      setBusy(true);
+      setMessage("");
+
+      const { data } =
+        await api.post("/boards", {
+          name,
+        });
+
+      setBoards((prev) => [
+        ...prev,
+        data,
+      ]);
+      setActiveBoardId(data._id);
+      setNewBoardName("");
+      setMessage("Board created.");
+    } catch (err) {
+      console.error(
+        "Create board error:",
+        err,
+      );
+
+      setMessage(
+        err.response?.data?.message ||
+          "Failed to create board",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
   /* =========================================================
      CONNECT GOOGLE
@@ -292,6 +386,11 @@ export default function Dashboard() {
     e.preventDefault();
 
     setMessage("");
+
+    if (!activeBoardId) {
+      setMessage("Choose a board first");
+      return;
+    }
 
     /* -----------------------------
        Validate task
@@ -381,6 +480,8 @@ export default function Dashboard() {
       setBusy(true);
 
       const payload = {
+        boardId: activeBoardId,
+
         text:
           newText.trim(),
 
@@ -422,7 +523,7 @@ export default function Dashboard() {
          Refresh organized list
       ----------------------------- */
 
-      await organize();
+      await organize(activeBoardId);
 
       if (
         googleConnected &&
@@ -533,11 +634,16 @@ export default function Dashboard() {
      ORGANIZE
   ========================================================= */
 
-  async function organize() {
+  async function organize(boardId = activeBoardId) {
+    if (!boardId) {
+      return null;
+    }
+
     try {
       const { data } =
         await api.post(
           "/todos/organize",
+          { boardId },
         );
 
       setTodos(data);
@@ -568,6 +674,11 @@ export default function Dashboard() {
       return;
     }
 
+    if (!activeBoardId) {
+      setMessage("Choose a board first");
+      return;
+    }
+
     setBusy(true);
     setMessage("");
 
@@ -595,6 +706,8 @@ export default function Dashboard() {
         await api.post(
           "/todos/dictate",
           {
+            boardId: activeBoardId,
+
             transcript:
               transcript.trim(),
 
@@ -641,11 +754,11 @@ export default function Dashboard() {
 
       <header className="dashboard-header">
         <div>
-          <h1>Today's Plan</h1>
+          <h1>{activeBoard?.name || "Boards"}</h1>
 
           <p className="subtitle">
-            Hi {user?.name} — resets
-            daily at 9:00 AM
+            Hi {user?.name} — choose a board
+            and plan from there
           </p>
         </div>
 
@@ -686,6 +799,54 @@ export default function Dashboard() {
       </header>
 
       {/* ===============================================
+          BOARDS
+      =============================================== */}
+
+      <section className="board-panel">
+        <div className="board-tabs">
+          {boards.map((board) => (
+            <button
+              key={board._id}
+              type="button"
+              className={
+                board._id === activeBoardId
+                  ? "board-tab active"
+                  : "board-tab"
+              }
+              onClick={() =>
+                setActiveBoardId(board._id)
+              }
+            >
+              {board.name}
+            </button>
+          ))}
+        </div>
+
+        <form
+          className="board-form"
+          onSubmit={handleCreateBoard}
+        >
+          <input
+            type="text"
+            placeholder="New board name"
+            value={newBoardName}
+            onChange={(e) =>
+              setNewBoardName(
+                e.target.value,
+              )
+            }
+          />
+
+          <button
+            type="submit"
+            disabled={busy}
+          >
+            Add board
+          </button>
+        </form>
+      </section>
+
+      {/* ===============================================
           MESSAGE
       =============================================== */}
 
@@ -701,7 +862,7 @@ export default function Dashboard() {
 
       <section className="dictation-panel">
 
-        <h2>Dictate your day</h2>
+        <h2>Dictate to {activeBoard?.name || "this board"}</h2>
 
         {!supported && (
           <p className="error-banner">
@@ -733,7 +894,7 @@ export default function Dashboard() {
                 : start
             }
             disabled={
-              !supported || busy
+              !supported || busy || !activeBoardId
             }
           >
             {listening
@@ -748,7 +909,7 @@ export default function Dashboard() {
               onClick={
                 submitDictation
               }
-              disabled={busy}
+              disabled={busy || !activeBoardId}
             >
               {busy
                 ? "Organizing..."
@@ -797,7 +958,11 @@ export default function Dashboard() {
 
         <input
           type="text"
-          placeholder="Add a task manually..."
+          placeholder={
+            activeBoard
+              ? `Add a task to ${activeBoard.name}...`
+              : "Add a task..."
+          }
           value={newText}
           onChange={(e) =>
             setNewText(
@@ -842,7 +1007,7 @@ export default function Dashboard() {
 
         <button
           type="submit"
-          disabled={busy}
+          disabled={busy || !activeBoardId}
         >
           {busy
             ? "Adding..."
@@ -860,10 +1025,10 @@ export default function Dashboard() {
         <button
           type="button"
           className="ghost-btn"
-          onClick={organize}
-          disabled={busy}
+          onClick={() => organize()}
+          disabled={busy || !activeBoardId}
         >
-          Re-organize list
+          Re-organize board
         </button>
 
       </div>
@@ -881,7 +1046,7 @@ export default function Dashboard() {
       ) : todos.length === 0 ? (
 
         <p className="empty-state">
-          No tasks yet today.
+          No tasks on this board yet.
           Dictate or add one.
         </p>
 
@@ -978,7 +1143,7 @@ export default function Dashboard() {
                         )}
 
                         {endDateTime
-                          ? ` – ${formatDateTime(
+                          ? ` - ${formatDateTime(
                               endDateTime,
                             )}`
                           : ""}
