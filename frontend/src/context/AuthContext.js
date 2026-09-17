@@ -31,9 +31,17 @@ export function AuthProvider({ children }) {
       password,
       acceptLegal,
     });
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data.user));
-    setUser(data.user);
+    if (data.token) {
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      setUser(data.user);
+    }
+    return data;
+  }
+
+  async function confirmRegistration(username, code) {
+    const { data } = await api.post("/auth/confirm", { username, code });
+    return data;
   }
 
   function logout() {
@@ -57,7 +65,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateProfile, updatePreferences }}>
+    <AuthContext.Provider value={{ user, loading, login, register, confirmRegistration, logout, updateProfile, updatePreferences }}>
       {children}
     </AuthContext.Provider>
   );

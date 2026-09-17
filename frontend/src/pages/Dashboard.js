@@ -12,6 +12,7 @@ import CommandCenter from "../components/CommandCenter";
 import CommandPalette from "../components/CommandPalette";
 import AssistantPanel from "../components/AssistantPanel";
 import BriefingPresentation from "../components/BriefingPresentation";
+import FirstLoginGuide from "../components/FirstLoginGuide";
 import useProactiveIntelligence from "../components/useProactiveIntelligence";
 import { useNotifications } from "../context/NotificationContext";
 
@@ -48,7 +49,8 @@ export default function Dashboard() {
   const [assistantOpen, setAssistantOpen] = useState(true);
   const initialMode = user?.preferences?.operatingMode || "briefing";
   const [operatingMode, setOperatingMode] = useState(initialMode);
-  const [showBriefing, setShowBriefing] = useState(() => sessionStorage.getItem(`karmex-briefed-${initialMode}`) !== "1");
+  const [showOnboarding, setShowOnboarding] = useState(() => user?.preferences?.onboardingComplete !== true);
+  const [showBriefing, setShowBriefing] = useState(() => user?.preferences?.onboardingComplete === true && sessionStorage.getItem(`karmex-briefed-${initialMode}`) !== "1");
 
   const activeBoard = boards.find((board) => board._id === activeBoardId);
   const intelligence = useProactiveIntelligence({ board: activeBoard, todos, githubConnected });
@@ -65,6 +67,15 @@ export default function Dashboard() {
     setBoards((current) => current.map((board) => board._id === savedBoard._id ? savedBoard : board));
   }, []);
   const closeBriefing = React.useCallback(() => setShowBriefing(false), []);
+  const completeOnboarding = React.useCallback(async () => {
+    try {
+      await updatePreferences({ onboardingComplete: true });
+      setShowOnboarding(false);
+      setShowBriefing(true);
+    } catch (err) {
+      notify(err.response?.data?.message || "Failed to save onboarding progress", "error");
+    }
+  }, [notify, updatePreferences]);
 
   async function changeOperatingMode(mode) {
     if (mode === operatingMode) return;
@@ -609,6 +620,7 @@ export default function Dashboard() {
       </div>
       <AssistantPanel open={assistantOpen} onClose={() => setAssistantOpen(false)} activeView={activeView} board={activeBoard} todos={todos} alerts={intelligence.alerts} onDismiss={intelligence.dismiss} onNavigate={setActiveView} />
       <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} boards={boards} onView={setActiveView} onBoard={openBoardFromCommand} onAssistant={() => setAssistantOpen((value) => !value)} />
+      {showOnboarding && <FirstLoginGuide user={user} onComplete={completeOnboarding} />}
       {showBriefing && <BriefingPresentation mode={operatingMode} user={user} boards={boards} activeBoard={activeBoard} githubConnected={githubConnected} onComplete={closeBriefing} />}
     </div>
   );

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function Register() {
-  const { register } = useAuth();
+  const { register, confirmRegistration, login } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -12,20 +12,39 @@ export default function Register() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [acceptLegal, setAcceptLegal] = useState(false);
+  const [confirmationCode, setConfirmationCode] = useState("");
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [destination, setDestination] = useState("");
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setBusy(true);
     try {
-      await register(name, username, email, password, acceptLegal);
-      navigate("/");
+      const result = await register(name, username, email, password, acceptLegal);
+      if (result.requiresConfirmation) {
+        setAwaitingConfirmation(true);
+        setDestination(result.destination || email);
+      } else navigate("/");
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed");
     } finally {
       setBusy(false);
     }
   }
+
+  async function handleConfirmation(e) {
+    e.preventDefault(); setError(""); setBusy(true);
+    try {
+      await confirmRegistration(username, confirmationCode);
+      await login(username, password);
+      navigate("/");
+    } catch (err) {
+      setError(err.response?.data?.message || "Confirmation failed");
+    } finally { setBusy(false); }
+  }
+
+  if (awaitingConfirmation) return <div className="auth-page"><form className="auth-card" onSubmit={handleConfirmation}><span className="eyebrow">AWS COGNITO</span><h1>Confirm your account</h1><p className="subtitle">Enter the six-digit code sent to {destination}.</p>{error && <div className="error-banner">{error}</div>}<label>Confirmation code</label><input type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={confirmationCode} onChange={(e) => setConfirmationCode(e.target.value.replace(/\D/g, ""))} autoFocus required /><button type="submit" disabled={busy || confirmationCode.length !== 6}>{busy ? "Verifying..." : "Verify and continue"}</button></form></div>;
 
   return (
     <div className="auth-page">

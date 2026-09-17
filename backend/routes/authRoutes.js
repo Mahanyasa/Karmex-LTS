@@ -3,6 +3,8 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
 const { TERMS_VERSION, PRIVACY_VERSION } = require("../config/legal");
+const crypto = require("crypto");
+const cognito = require("../config/cognitoClient");
 
 const router = express.Router();
 
@@ -58,17 +60,26 @@ router.post("/register", async (req, res) => {
       return res.status(409).json({ message: "That username is already taken" });
     }
     const username = requestedUsername || await createUniqueUsername(email.split("@")[0] || name);
+    let cognitoSub = null;
+    if (cognito.isConfigured()) {
+      const result = await cognito.signUp({ username, password, email: email.toLowerCase(), name });
+      cognitoSub = result.UserSub;
+    }
     const user = await User.create({
       name,
       email,
-      password,
+      password: cognito.isConfigured() ? crypto.randomBytes(32).toString("hex") : password,
       username,
+      cognitoSub,
       legalAcceptance: {
         termsVersion: TERMS_VERSION,
         privacyVersion: PRIVACY_VERSION,
         acceptedAt: new Date(),
       },
     });
+    if (cognito.isConfigured()) {
+      return res.status(201).json({ requiresConfirmation: true, username: user.username, destination: email.replace(/^(.{2}).*(@.*)$/, "$1***$2") });
+    }
     const token = signToken(user._id);
 
     res.status(201).json({
@@ -77,7 +88,7 @@ router.post("/register", async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Server error during registration" });
+    res.status(cognito.isConfigured() ? 400 : 500).json({ message: err.message || "Server error during registration" });
   }
 });
 
@@ -95,9 +106,11 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const match = await user.comparePassword(password);
-    if (!match) {
-      return res.status(401).json({ message: "Invalid credentials" });
+    if (cognito.isConfigured() && user.cognitoSub) {
+      await cognito.authenticate({ username, password });
+    } else {
+      const match = await user.comparePassword(password);
+      if (!match) return res.status(401).json({ message: "Invalid credentials" });
     }
 
     if (!user.username) {
@@ -111,7 +124,21 @@ router.post("/login", async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Server error during login" });
+    res.status(cognito.isConfigured() ? 401 : 500).json({ message: err.message || "Server error during login" });
+  }
+});
+
+router.post("/confirm", async (req, res) => {
+  try {
+    if (!cognito.isConfigured()) return res.status(400).json({ message: "Cognito is not configured" });
+    const username = normalizeUsername(req.body.username);
+    const code = String(req.body.code || "").trim();
+    if (!username || !/^\d{6}$/.test(code)) return res.status(400).json({ message: "Enter the 6-digit confirmation code" });
+    await cognito.confirmSignUp({ username, code });
+    res.json({ message: "Account confirmed. You can now log in." });
+  } catch (err) {
+    console.error("Cognito confirmation error:", err.code || err.message);
+    res.status(400).json({ message: err.message || "Confirmation failed" });
   }
 });
 
@@ -183,14 +210,20 @@ router.patch("/profile", auth, async (req, res) => {
 
 router.patch("/preferences", auth, async (req, res) => {
   try {
-    const operatingMode = String(req.body.operatingMode || "");
-    if (!["focus", "sprint", "team", "briefing"].includes(operatingMode)) return res.status(400).json({ message: "Invalid operating mode" });
-    const user = await User.findByIdAndUpdate(req.userId, { "preferences.operatingMode": operatingMode }, { new: true, runValidators: true });
+    const updates = {};
+    if (req.body.operatingMode !== undefined) {
+      const operatingMode = String(req.body.operatingMode || "");
+      if (!["focus", "sprint", "team", "briefing"].includes(operatingMode)) return res.status(400).json({ message: "Invalid operating mode" });
+      updates["preferences.operatingMode"] = operatingMode;
+    }
+    if (req.body.onboardingComplete !== undefined) updates["preferences.onboardingComplete"] = req.body.onboardingComplete === true;
+    if (!Object.keys(updates).length) return res.status(400).json({ message: "No preference changes supplied" });
+    const user = await User.findByIdAndUpdate(req.userId, updates, { new: true, runValidators: true });
     if (!user) return res.status(404).json({ message: "User not found" });
     res.json({ id: user._id, name: user.name, username: user.username, email: user.email, avatar: user.avatar, profile: user.profile, preferences: user.preferences });
   } catch (err) {
     console.error("Update preferences error:", err);
-    res.status(500).json({ message: "Failed to update operating mode" });
+    res.status(500).json({ message: "Failed to update preferences" });
   }
 });
 
@@ -204,6 +237,10 @@ router.patch("/password", auth, async (req, res) => {
     }
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ message: "User not found" });
+    if (cognito.isConfigured() && user.cognitoSub) {
+      await cognito.changePassword({ username: user.username, currentPassword, newPassword });
+      return res.json({ message: "Password updated successfully" });
+    }
     if (!(await user.comparePassword(currentPassword))) return res.status(401).json({ message: "Current password is incorrect" });
     if (await user.comparePassword(newPassword)) return res.status(400).json({ message: "New password must be different from your current password" });
     user.password = newPassword;

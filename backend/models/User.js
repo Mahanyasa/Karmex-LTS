@@ -22,6 +22,7 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     password: { type: String, required: true, minlength: 6 },
+    cognitoSub: { type: String, unique: true, sparse: true, default: null },
     avatar: { type: String, default: null, maxlength: 750000 },
     profile: {
       bio: { type: String, default: "", maxlength: 280 },
@@ -39,6 +40,7 @@ const userSchema = new mongoose.Schema(
     },
     preferences: {
       operatingMode: { type: String, enum: ["focus", "sprint", "team", "briefing"], default: "briefing" },
+      onboardingComplete: { type: Boolean, default: false },
     },
     // OAuth tokens for the user's OWN Google account, obtained via consent
     // screen (never their password). Used to create Calendar reminder events.
