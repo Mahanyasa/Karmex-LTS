@@ -11,7 +11,7 @@ async function createReminderEvent(user, todo) {
 
   const calendar = google.calendar({ version: "v3", auth: authClient });
 
-  const start = buildStartDate(todo.timeHint);
+  const start = todo.reminderDateTime ? new Date(todo.reminderDateTime) : buildStartDate(todo.timeHint);
   const durationMinutes = todo.duration || 30;
   const end = new Date(start.getTime() + durationMinutes * 60000);
 

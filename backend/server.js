@@ -51,6 +51,7 @@ function mountApi(prefix) {
   app.use(`${prefix}/boards`, boardRoutes);
   app.use(`${prefix}/todos`, todoRoutes);
   app.use(`${prefix}/google`, googleRoutes);
+  app.use(`${prefix}/microsoft`, require("./routes/microsoftRoutes"));
   app.use(`${prefix}/files`, fileRoutes);
   app.use(`${prefix}/github`, githubRoutes);
   app.use(`${prefix}/vault`, vaultRoutes);

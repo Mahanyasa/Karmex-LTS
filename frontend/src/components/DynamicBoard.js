@@ -131,8 +131,15 @@ function Upcoming({ todos }) {
 }
 
 function TaskTable({ todos, loading, canEdit, onToggle, onDelete }) {
+  const [view, setView] = useState(() => {
+    try { return localStorage.getItem("karmex-task-view") === "postits" ? "postits" : "rows"; } catch { return "rows"; }
+  });
+  function changeView(next) {
+    setView(next);
+    try { localStorage.setItem("karmex-task-view", next); } catch { /* Keep the view usable when storage is unavailable. */ }
+  }
   if (loading) return <div className="widget-empty">Loading tasks...</div>;
-  return <div className="board-task-table">{todos.map((todo) => <div key={todo._id} className={todo.completed ? "completed" : ""}><input type="checkbox" checked={Boolean(todo.completed)} onChange={() => onToggle(todo)} disabled={!canEdit} /><span>{todo.text}</span><small>{todo.reminderDateTime ? new Date(todo.reminderDateTime).toLocaleString() : "No reminder"}</small>{todo.source?.url && <a href={todo.source.url} target="_blank" rel="noreferrer">GH</a>}{canEdit && <button type="button" onClick={() => onDelete(todo._id)} title="Delete task">×</button>}</div>)}{!todos.length && <div className="widget-empty">No tasks on this board</div>}</div>;
+  return <><div className="task-view-toggle" role="group" aria-label="Task view"><button type="button" aria-pressed={view === "rows"} onClick={() => changeView("rows")}>Rows</button><button type="button" aria-pressed={view === "postits"} onClick={() => changeView("postits")}>Post-its</button></div><div className={view === "postits" ? "board-task-postits" : "board-task-table"}>{todos.map((todo, index) => <div key={todo._id} className={`${todo.completed ? "completed" : ""} task-color-${index % 6}`}><input type="checkbox" aria-label={`Mark ${todo.text} ${todo.completed ? "incomplete" : "complete"}`} checked={Boolean(todo.completed)} onChange={() => onToggle(todo)} disabled={!canEdit} /><span>{todo.text}{todo.microsoftSyncError && <em className="calendar-sync-error" title={todo.microsoftSyncError}>Outlook sync failed</em>}</span><small>{todo.reminderDateTime ? new Date(todo.reminderDateTime).toLocaleString() : "No reminder"}</small>{todo.source?.url && <a href={todo.source.url} target="_blank" rel="noreferrer">GH</a>}{canEdit && <button type="button" onClick={() => onDelete(todo._id)} title="Delete task" aria-label={`Delete ${todo.text}`}>×</button>}</div>)}</div>{!todos.length && <div className="widget-empty">No tasks on this board</div>}</>;
 }
 
 function ReadOnlyNotice({ board }) {

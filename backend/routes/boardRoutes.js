@@ -5,6 +5,7 @@ const User = require("../models/User");
 const FriendRequest = require("../models/FriendRequest");
 const auth = require("../middleware/auth");
 const { deleteReminderEvent } = require("../utils/googleCalendar");
+const microsoftCalendar = require("../utils/microsoftCalendar");
 
 const router = express.Router();
 router.use(auth);
@@ -322,6 +323,17 @@ router.delete("/:id", async (req, res) => {
       }
     }
 
+    const microsoftTodos = todos.filter((todo) => todo.microsoftEventId);
+    let calendarWarning = null;
+    if (microsoftTodos.length) {
+      const user = await User.findById(req.userId).select("+microsoftTokens");
+      for (const todo of microsoftTodos) {
+        try {
+          if (!user?.microsoftConnected) throw new Error("Disconnected");
+          await microsoftCalendar.deleteReminderEvent(user, todo.microsoftEventId);
+        } catch { calendarWarning = "Some Outlook reminders could not be removed. Remove them in Outlook."; }
+      }
+    }
     await Todo.deleteMany({ board: board._id, user: req.userId });
     await board.deleteOne();
 
@@ -331,7 +343,7 @@ router.delete("/:id", async (req, res) => {
       boards = [mainBoard];
     }
 
-    res.json({ deleted: true, boards });
+    res.json({ deleted: true, boards, calendarWarning });
   } catch (err) {
     console.error("Delete board error:", err);
     res.status(500).json({ message: "Failed to delete board" });

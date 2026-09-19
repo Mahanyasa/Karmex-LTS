@@ -164,6 +164,11 @@ export default function Dashboard() {
     const params = new URLSearchParams(window.location.search);
     const googleParam = params.get("google");
     const githubParam = params.get("github");
+    const microsoftParam = params.get("microsoft");
+    if (microsoftParam) {
+      setActiveView("settings");
+      setMessage(microsoftParam === "connected" ? "Microsoft Calendar connected. New task reminders will sync to Outlook." : microsoftParam === "denied" ? "Microsoft Calendar connection was cancelled." : "Microsoft Calendar connection failed. Please try again.");
+    }
 
     if (googleParam === "connected") {
       setMessage("Google connected. New tasks will send phone reminders.");
@@ -185,7 +190,7 @@ export default function Dashboard() {
       setMessage("Something went wrong connecting GitHub. Try again.");
     }
 
-    if (googleParam || githubParam) {
+    if (googleParam || githubParam || microsoftParam) {
       window.history.replaceState({}, "", window.location.pathname);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -252,7 +257,7 @@ export default function Dashboard() {
       const { data } = await api.delete(`/boards/${board._id}`);
       setBoards(data.boards);
       setActiveBoardId(data.boards[0]?._id || "");
-      setMessage(`${board.name} deleted.`);
+      setMessage(data.calendarWarning || `${board.name} deleted.`);
     } catch (err) {
       setMessage(err.response?.data?.message || "Failed to delete board");
     } finally {
@@ -346,7 +351,11 @@ export default function Dashboard() {
       setSidebarMode(null);
       await organize(activeBoardId);
 
-      if (googleConnected && data?.googleEventId) {
+      if (data?.microsoftSyncError) {
+        setMessage(`Task added. ${data.microsoftSyncError}`);
+      } else if (data?.microsoftEventId) {
+        setMessage(`Task added with ${data.googleEventId ? "Microsoft and Google Calendar" : "Microsoft Calendar"} reminders.`);
+      } else if (googleConnected && data?.googleEventId) {
         setMessage("Task added and Google Calendar reminder created.");
       } else if (googleConnected) {
         setMessage("Task added. Google reminder was not created.");
@@ -377,9 +386,9 @@ export default function Dashboard() {
 
   async function handleDelete(id) {
     try {
-      await api.delete(`/todos/${id}`);
+      const { data } = await api.delete(`/todos/${id}`);
       setTodos((current) => current.filter((todo) => todo._id !== id));
-      setMessage("Task deleted.");
+      setMessage(data.calendarWarning || "Task deleted.");
     } catch (err) {
       console.error("Delete todo error:", err);
       setMessage(err.response?.data?.message || "Failed to delete task");

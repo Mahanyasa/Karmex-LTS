@@ -3,6 +3,7 @@ const Board = require("../models/Board");
 const Todo = require("../models/Todo");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
+const microsoftCalendar = require("../utils/microsoftCalendar");
 const { parseDictation, organizeTasks } = require("../utils/organizer");
 const {
   createReminderEvent,
@@ -110,7 +111,8 @@ function buildReminderDateTime(bucket, timeHint) {
 
 // Best-effort Calendar creation.
 // Failure to create a Google event does NOT fail todo creation.
-async function maybeCreateReminder(userId, todo) {
+async function maybeCreateReminder(userId, todo, syncMicrosoft = true) {
+  if (syncMicrosoft) await microsoftCalendar.syncReminder(userId, todo);
   try {
     if (!todo.reminderDateTime) {
       console.log(
@@ -693,6 +695,10 @@ router.patch("/:id", async (req, res) => {
       req.body.text !== undefined ||
       req.body.duration !== undefined;
 
+    if (reminderChanged || req.body.completed !== undefined || req.body.priority !== undefined) {
+      await microsoftCalendar.syncReminder(req.userId, todo);
+    }
+
     if (reminderChanged) {
       const user =
         await User.findById(
@@ -726,10 +732,7 @@ router.patch("/:id", async (req, res) => {
 
         // Create new event with updated date/time
         if (todo.reminderDateTime) {
-          await maybeCreateReminder(
-            req.userId,
-            todo,
-          );
+          await maybeCreateReminder(req.userId, todo, false);
         }
       }
     }
@@ -795,9 +798,15 @@ router.delete("/:id", async (req, res) => {
       }
     }
 
-    res.json({
-      message: "Deleted",
-    });
+    let calendarWarning = null;
+    if (todo.microsoftEventId) {
+      try {
+        const user = await User.findById(req.userId).select("+microsoftTokens");
+        if (!user?.microsoftConnected) calendarWarning = "Task deleted. Microsoft Calendar is disconnected; remove its old event in Outlook.";
+        else await microsoftCalendar.deleteReminderEvent(user, todo.microsoftEventId);
+      } catch { calendarWarning = "Task deleted, but its Outlook event could not be removed. Remove it in Outlook."; }
+    }
+    res.json({ message: "Deleted", calendarWarning });
   } catch (err) {
     console.error(
       "Delete todo error:",

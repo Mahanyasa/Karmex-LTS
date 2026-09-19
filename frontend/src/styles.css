@@ -1941,3 +1941,32 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .onboarding-stage.active > footer { position: relative; z-index: 1; display: flex; justify-content: flex-end; gap: 8px; }.onboarding-stage.active > footer .accent-btn { color: #001116; background: var(--accent); min-width: 140px; }
 @media (prefers-reduced-motion: reduce) { .onboarding-mark, .onboarding-mark i, .guide-core, .guide-core span, .guide-lines { animation: none; } }
 @media (max-width: 760px) { .onboarding-stage.active { padding: 20px 16px; }.onboarding-stage.active > header > span { display: none; }.onboarding-stage.active main { grid-template-columns: 1fr; gap: 12px; }.onboarding-visual { max-height: 260px; }.guide-core { width: 115px; height: 115px; }.onboarding-copy h1 { margin-block: 10px 14px; font-size: 38px; }.onboarding-copy p { font-size: 11px; }.onboarding-dots { margin-top: 18px; } }
+
+/* Compact operation status reveals details on hover, focus, or touch focus. */
+.operation-hud { min-width: 0; width: 34px; gap: 0; overflow: hidden; pointer-events: auto; transition: width .18s ease, opacity .18s ease, border-color .18s ease; }
+.operation-hud .operation-core { flex: 0 0 10px; }
+.operation-hud strong, .operation-hud small { max-width: 0; opacity: 0; overflow: hidden; white-space: nowrap; }
+.operation-hud:hover, .operation-hud:focus { width: min(300px, calc(100vw - 36px)); gap: 9px; opacity: 1; }
+.operation-hud:hover strong, .operation-hud:focus strong { max-width: 240px; opacity: 1; text-overflow: ellipsis; }
+.operation-hud:hover small, .operation-hud:focus small { max-width: 35px; opacity: 1; flex-shrink: 0; }
+.operation-hud:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.task-view-toggle { display: flex; gap: 4px; padding: 10px 14px; }
+.task-view-toggle button { border: 1px solid var(--border); background: transparent; color: var(--muted); padding: 6px 12px; border-radius: 4px; cursor: pointer; font: inherit; font-size: 11px; }
+.task-view-toggle button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); background: rgba(53,217,255,.08); }
+.board-task-postits { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr)); gap: 16px; padding: 12px 18px 22px; }
+.board-task-postits > div { position: relative; display: grid; grid-template-columns: 22px 1fr 24px; align-content: start; gap: 12px 6px; min-height: 180px; padding: 16px; color: #202329; background: #fff080; box-shadow: 2px 5px 9px rgba(0,0,0,.18); border-radius: 2px 2px 14px 2px; }
+.board-task-postits > .task-color-1 { background: #ff9bc6; }
+.board-task-postits > .task-color-2 { background: #8edaf2; }
+.board-task-postits > .task-color-3 { background: #9ee8ba; }
+.board-task-postits > .task-color-4 { background: #c6b2ff; }
+.board-task-postits > .task-color-5 { background: #ffbc82; }
+.board-task-postits input { grid-column: 1; grid-row: 1; accent-color: #225f47; }
+.board-task-postits span { grid-column: 1 / -1; grid-row: 2; font-size: 15px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.board-task-postits small { grid-column: 1 / -1; grid-row: 3; font-size: 10px; color: #454951; }
+.board-task-postits a { grid-column: 2; grid-row: 1; color: #202329; font-size: 11px; }
+.board-task-postits button { grid-column: 3; grid-row: 1; border: 0; background: transparent; color: #454951; font-size: 20px; cursor: pointer; }
+.board-task-postits .completed { opacity: .55; }
+.board-task-postits .completed span { text-decoration: line-through; }
+@media (prefers-reduced-motion: reduce) { .operation-hud { transition: none; } }
+.microsoft-logo { color: #50b9ff; background: rgba(0,120,212,.12); }
+.calendar-sync-error { display: block; color: #d04444; font-size: 10px; font-weight: 600; font-style: normal; white-space: normal; }

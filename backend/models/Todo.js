@@ -71,6 +71,8 @@ const todoSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    microsoftEventId: { type: String, default: null },
+    microsoftSyncError: { type: String, default: null },
 
     source: {
       type: { type: String, enum: ["github"], default: null },

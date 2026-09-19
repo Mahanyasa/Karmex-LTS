@@ -20,5 +20,5 @@ export default function OperationHud() {
     window.addEventListener("karmex:operation", update);
     return () => { window.removeEventListener("karmex:operation", update); clearTimeout(hideTimer.current); };
   }, []);
-  return <div className={`operation-hud ${status.state}`} aria-live="polite"><span className="operation-core" /><strong>{status.label}</strong>{status.count > 1 && <small>+{status.count - 1}</small>}</div>;
+  return <div className={`operation-hud ${status.state}`} tabIndex={0} role="status" aria-live="polite" aria-label={status.label}><span className="operation-core" /><strong>{status.label}</strong>{status.count > 1 && <small>+{status.count - 1}</small>}</div>;
 }

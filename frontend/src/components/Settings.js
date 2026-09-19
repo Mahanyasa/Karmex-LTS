@@ -4,6 +4,7 @@ import api from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationContext";
 import SocialPanel from "./SocialPanel";
+import MicrosoftCalendarConnection from "./MicrosoftCalendarConnection";
 import { API_VERSION, APP_VERSION } from "../version";
 
 function resizeAvatar(file) {
@@ -167,6 +168,7 @@ export default function Settings({ googleConnected, connectGoogle, disconnectGoo
           </div>
 
           <div className="connection-list">
+            <MicrosoftCalendarConnection />
             <article className="connection-row">
               <span className="connection-logo google-logo">G</span>
               <div><strong>Google Calendar</strong><span>Creates reminders for your post-its.</span></div>

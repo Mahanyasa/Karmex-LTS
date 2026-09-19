@@ -52,6 +52,15 @@ const userSchema = new mongoose.Schema(
       expiry_date: { type: Number, default: null },
     },
     googleConnected: { type: Boolean, default: false },
+    microsoftConnected: { type: Boolean, default: false },
+    microsoftTokens: {
+      type: new mongoose.Schema({ access_token: String, refresh_token: String, expiry_date: Number }, { _id: false }),
+      select: false,
+    },
+    microsoftOAuth: {
+      type: new mongoose.Schema({ stateHash: String, verifier: String, expiresAt: Date }, { _id: false }),
+      select: false,
+    },
     githubConnection: {
       accessToken: { type: String, default: null },
       scope: { type: String, default: null },
