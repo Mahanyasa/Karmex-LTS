@@ -129,9 +129,11 @@ export default function Dashboard() {
     try {
       const { data } = await api.get("/todos", { params: { boardId } });
       setTodos(data);
+      return true;
     } catch (err) {
       console.error("Load todos error:", err);
       setMessage(err.response?.data?.message || "Failed to load tasks");
+      return false;
     } finally {
       setLoading(false);
     }

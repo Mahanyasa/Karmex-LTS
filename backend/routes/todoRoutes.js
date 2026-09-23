@@ -4,6 +4,7 @@ const Todo = require("../models/Todo");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
 const microsoftCalendar = require("../utils/microsoftCalendar");
+const { validateId, validateWorkItemInput, resolveWorkflow, workflowError } = require("../utils/workflow");
 const { parseDictation, organizeTasks } = require("../utils/organizer");
 const {
   createReminderEvent,
@@ -200,6 +201,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
+    validateWorkItemInput(req.body);
     const {
       boardId,
       text,
@@ -268,6 +270,8 @@ router.post("/", async (req, res) => {
     ----------------------------- */
 
     const todo = await Todo.create({
+      ...Object.fromEntries(["workType", "storyPoints", "labels", "acceptanceCriteria", "blockedReason"].filter((key) => req.body[key] !== undefined).map((key) => [key, req.body[key]])),
+      ...resolveWorkflow({ board: board._id }, req.body, board),
       user: req.userId,
 
       board: board._id,
@@ -297,14 +301,13 @@ router.post("/", async (req, res) => {
 
     res.status(201).json(savedTodo);
   } catch (err) {
+    if (workflowError(res, err)) return;
     console.error(
       "Create todo error:",
       err,
     );
 
-    res.status(500).json({
-      message: "Failed to create todo",
-    });
+    res.status(500).json({ message: "Failed to create todo" });
   }
 });
 
@@ -570,6 +573,8 @@ async function reorganizeAndSave(
 
 router.patch("/:id", async (req, res) => {
   try {
+    validateId(req.params.id, "work item ID");
+    validateWorkItemInput(req.body);
     const updates = {};
 
     const allowedFields = [
@@ -591,7 +596,7 @@ router.patch("/:id", async (req, res) => {
       }
     });
 
-    if (req.body.labels !== undefined) updates.labels = Array.isArray(req.body.labels) ? req.body.labels.map((label) => String(label).trim()).filter(Boolean).slice(0, 12) : [];
+    if (req.body.labels !== undefined) updates.labels = [...new Set(req.body.labels.map((label) => label.trim()))];
 
     if (req.body.boardId !== undefined) {
       const board = await resolveBoard(req.userId, req.body.boardId, true);
@@ -656,18 +661,9 @@ router.patch("/:id", async (req, res) => {
       });
     }
 
-    if (req.body.sprintId !== undefined) {
-      if (req.body.sprintId === null || req.body.sprintId === "") {
-        updates.sprint = null;
-        updates.workflowStage = "To do";
-      } else {
-        const sprintBoard = await Board.findOne({ _id: existingTodo.board, user: req.userId, "sprints._id": req.body.sprintId });
-        if (!sprintBoard) return res.status(404).json({ message: "Sprint not found" });
-        updates.sprint = req.body.sprintId;
-        const sprint = sprintBoard.sprints.id(req.body.sprintId);
-        if (!sprint.stages.includes(updates.workflowStage)) updates.workflowStage = sprint.stages[0];
-      }
-    }
+    const workflowBoard = await Board.findOne({ _id: updates.board || existingTodo.board, user: req.userId });
+    if (!workflowBoard) return res.status(404).json({ message: "Board not found" });
+    Object.assign(updates, resolveWorkflow(existingTodo, req.body, workflowBoard));
 
     /* -----------------------------
        Update Todo
@@ -682,6 +678,7 @@ router.patch("/:id", async (req, res) => {
         updates,
         {
           new: true,
+          runValidators: true,
         },
       );
 
@@ -695,7 +692,7 @@ router.patch("/:id", async (req, res) => {
       req.body.text !== undefined ||
       req.body.duration !== undefined;
 
-    if (reminderChanged || req.body.completed !== undefined || req.body.priority !== undefined) {
+    if (reminderChanged || updates.completed !== existingTodo.completed || req.body.priority !== undefined) {
       await microsoftCalendar.syncReminder(req.userId, todo);
     }
 
@@ -742,14 +739,13 @@ router.patch("/:id", async (req, res) => {
 
     res.json(savedTodo);
   } catch (err) {
+    if (workflowError(res, err)) return;
     console.error(
       "Update todo error:",
       err,
     );
 
-    res.status(500).json({
-      message: "Failed to update todo",
-    });
+    res.status(500).json({ message: "Failed to update todo" });
   }
 });
 

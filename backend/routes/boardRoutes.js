@@ -6,6 +6,7 @@ const FriendRequest = require("../models/FriendRequest");
 const auth = require("../middleware/auth");
 const { deleteReminderEvent } = require("../utils/googleCalendar");
 const microsoftCalendar = require("../utils/microsoftCalendar");
+const { validateSprintTransition, validateSprintInput, workflowError } = require("../utils/workflow");
 
 const router = express.Router();
 router.use(auth);
@@ -238,6 +239,7 @@ router.patch("/:id/layout", async (req, res) => {
 
 router.post("/:id/sprints", async (req, res) => {
   try {
+    validateSprintInput(req.body, true);
     const board = await Board.findOne({ _id: req.params.id, user: req.userId });
     if (!board) return res.status(404).json({ message: "Board not found" });
     const name = String(req.body.name || "").trim();
@@ -252,6 +254,7 @@ router.post("/:id/sprints", async (req, res) => {
     await board.save();
     res.status(201).json(board);
   } catch (err) {
+    if (workflowError(res, err)) return;
     console.error("Create sprint error:", err.message);
     res.status(500).json({ message: "Failed to create sprint" });
   }
@@ -259,12 +262,13 @@ router.post("/:id/sprints", async (req, res) => {
 
 router.patch("/:id/sprints/:sprintId", async (req, res) => {
   try {
+    validateSprintInput(req.body);
     const board = await Board.findOne({ _id: req.params.id, user: req.userId });
     if (!board) return res.status(404).json({ message: "Board not found" });
     const sprint = board.sprints.id(req.params.sprintId);
     if (!sprint) return res.status(404).json({ message: "Sprint not found" });
-    if (req.body.status && ["planned", "active", "completed"].includes(req.body.status)) {
-      if (req.body.status === "active") board.sprints.forEach((item) => { if (String(item._id) !== String(sprint._id) && item.status === "active") item.status = "planned"; });
+    if (req.body.status !== undefined) {
+      validateSprintTransition(board, sprint, req.body.status);
       sprint.status = req.body.status;
     }
     ["name", "goal"].forEach((field) => { if (req.body[field] !== undefined) sprint[field] = String(req.body[field]).trim(); });
@@ -272,6 +276,7 @@ router.patch("/:id/sprints/:sprintId", async (req, res) => {
     await board.save();
     res.json(board);
   } catch (err) {
+    if (workflowError(res, err)) return;
     console.error("Update sprint error:", err.message);
     res.status(500).json({ message: "Failed to update sprint" });
   }
@@ -285,9 +290,11 @@ router.delete("/:id/sprints/:sprintId", async (req, res) => {
     if (!sprint) return res.status(404).json({ message: "Sprint not found" });
     sprint.deleteOne();
     await board.save();
-    await Todo.updateMany({ board: board._id, sprint: req.params.sprintId }, { $set: { sprint: null, workflowStage: "To do" } });
+    await Todo.updateMany({ board: board._id, sprint: req.params.sprintId, completed: true }, { $set: { sprint: null, workflowStage: "Done" } });
+    await Todo.updateMany({ board: board._id, sprint: req.params.sprintId, completed: { $ne: true } }, { $set: { sprint: null, workflowStage: "To do" } });
     res.json(board);
   } catch (err) {
+    if (workflowError(res, err)) return;
     console.error("Delete sprint error:", err.message);
     res.status(500).json({ message: "Failed to delete sprint" });
   }
