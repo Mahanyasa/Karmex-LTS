@@ -163,7 +163,7 @@ export default function GitHubDashboard({ connected, connectGitHub, boards, acti
 
       {(tab === "overview" || tab === "issues") && (
         <ActivitySection eyebrow="ISSUES" title="Issue status" items={data.issues} empty="No recent issues" actionHeader={(
-          <label className="issue-board-picker"><span>Add issues to</span><select value={targetBoardId} onChange={(event) => setTargetBoardId(event.target.value)}><option value="">Select board</option>{boards.map((board) => <option key={board._id} value={board._id}>{board.name}</option>)}</select></label>
+          <label className="issue-board-picker"><span>Add issues to</span><select value={targetBoardId} onChange={(event) => setTargetBoardId(event.target.value)}><option value="">Select project</option>{boards.filter((board) => board.permissions?.canEdit).map((board) => <option key={board._id} value={board._id}>{board.name}</option>)}</select></label>
         )} action={(issue) => (
           <div className="issue-actions"><ExternalLink href={issue.htmlUrl} className="issue-open-link">Open</ExternalLink><button type="button" className="issue-add-btn" disabled={addingIssueId === issue.id} onClick={() => addIssueToWorkspace(issue)} title="Add issue to workspace">{addingIssueId === issue.id ? "…" : "+"}</button></div>
         )} render={(issue) => (

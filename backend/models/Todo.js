@@ -2,6 +2,13 @@ const mongoose = require("mongoose");
 
 const todoSchema = new mongoose.Schema(
   {
+    creator: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    reporter: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    assignee: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    description: { type: String, default: "", maxlength: 30000 },
+    issueNumber: { type: Number, min: 1 },
+    issueKey: { type: String },
+    archivedAt: { type: Date, default: null },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -95,5 +102,22 @@ const todoSchema = new mongoose.Schema(
 );
 
 todoSchema.index({ user: 1, board: 1, sortOrder: 1, createdAt: 1 });
+todoSchema.index({ issueKey: 1 }, { unique: true, sparse: true });
+todoSchema.index({ board: 1, issueNumber: 1 });
+todoSchema.index({ board: 1, archivedAt: 1, assignee: 1, updatedAt: -1 });
+todoSchema.index({ board: 1, sprint: 1, archivedAt: 1 });
+todoSchema.pre("validate", async function () {
+  if (!this.creator) this.creator = this.user;
+  if (!this.reporter) this.reporter = this.user;
+  if (this.isNew && !this.issueKey && this.board) {
+    const Board = require("./Board");
+    let board = await Board.findById(this.board);
+    if (!board) throw new Error("Project not found");
+    if (!board.projectKey) await board.save();
+    board = await Board.findOneAndUpdate({ _id: this.board }, { $inc: { issueSequence: 1 } }, { new: true });
+    this.issueNumber = board.issueSequence;
+    this.issueKey = `${board.projectKey}-${board.issueSequence}`;
+  }
+});
 
 module.exports = mongoose.model("Todo", todoSchema);

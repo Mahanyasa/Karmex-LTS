@@ -12,10 +12,12 @@ function validateWorkItemInput(body) {
   for (const [field, values] of Object.entries({ priority: ["high", "medium", "low"], workType: ["story", "task", "bug", "spike"] })) {
     if (body[field] !== undefined && !values.includes(body[field])) throw invalid(`Invalid ${field}`);
   }
-  for (const [field, limit] of Object.entries({ text: Infinity, workflowStage: 60, acceptanceCriteria: 5000, blockedReason: 1000 })) {
+  for (const [field, limit] of Object.entries({ text: Infinity, description: 30000, workflowStage: 60, acceptanceCriteria: 5000, blockedReason: 1000 })) {
     if (body[field] !== undefined && (typeof body[field] !== "string" || body[field].length > limit || (["text", "workflowStage"].includes(field) && !body[field].trim()))) throw invalid(`Invalid ${field}`);
   }
   if (body.completed !== undefined && typeof body.completed !== "boolean") throw invalid("Completed must be a boolean");
+  if (body.archived !== undefined && typeof body.archived !== "boolean") throw invalid("Archived must be a boolean");
+  if (body.assignee !== undefined && body.assignee !== null) validateId(body.assignee, "assignee ID");
   if (body.storyPoints !== undefined && (typeof body.storyPoints !== "number" || !Number.isFinite(body.storyPoints) || body.storyPoints < 0 || body.storyPoints > 100)) throw invalid("Story points must be between 0 and 100");
   if (body.labels !== undefined && (!Array.isArray(body.labels) || body.labels.length > 12 || body.labels.some((label) => typeof label !== "string" || !label.trim() || label.trim().length > 60))) throw invalid("Provide at most 12 non-empty labels of up to 60 characters");
   if (body.boardId !== undefined) validateId(body.boardId, "board ID");

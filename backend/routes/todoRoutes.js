@@ -5,6 +5,7 @@ const User = require("../models/User");
 const auth = require("../middleware/auth");
 const microsoftCalendar = require("../utils/microsoftCalendar");
 const { validateId, validateWorkItemInput, resolveWorkflow, workflowError } = require("../utils/workflow");
+const { findProject, assertAssignee } = require("../utils/projectAccess");
 const { parseDictation, organizeTasks } = require("../utils/organizer");
 const {
   createReminderEvent,
@@ -13,6 +14,7 @@ const {
 
 const router = express.Router();
 router.use(auth);
+router.use(require("./issueRoutes"));
 
 /* =========================================================
    HELPERS
@@ -57,12 +59,11 @@ async function ensureDefaultBoard(userId) {
 
 async function resolveBoard(userId, boardId, requireOwner = false) {
   if (!boardId) {
-    return ensureDefaultBoard(userId);
+    const board = await ensureDefaultBoard(userId);
+    return requireOwner && board.archivedAt ? null : board;
   }
 
-  const board = await Board.findOne(requireOwner
-    ? { _id: boardId, user: userId }
-    : { _id: boardId, $or: [{ user: userId }, { "sharedWith.user": userId }] });
+  const board = await findProject(userId, boardId, requireOwner ? "write" : "read");
 
   return board;
 }
@@ -169,7 +170,7 @@ router.get("/", async (req, res) => {
       });
     }
 
-    const todos = await Todo.find({ board: board._id }).sort({
+    const todos = await Todo.find({ board: board._id, archivedAt: null }).sort({
       sortOrder: 1,
       createdAt: 1,
     });
@@ -232,15 +233,9 @@ router.post("/", async (req, res) => {
        Validate reminder date/time
     ----------------------------- */
 
-    if (!reminderDateTime) {
-      return res.status(400).json({
-        message: "Task date and time are required",
-      });
-    }
+    const parsedDateTime = reminderDateTime ? new Date(reminderDateTime) : null;
 
-    const parsedDateTime = new Date(reminderDateTime);
-
-    if (Number.isNaN(parsedDateTime.getTime())) {
+    if (parsedDateTime && Number.isNaN(parsedDateTime.getTime())) {
       return res.status(400).json({
         message: "Invalid task date/time",
       });
@@ -269,8 +264,9 @@ router.post("/", async (req, res) => {
        Create Todo
     ----------------------------- */
 
+    if (req.body.assignee !== undefined) assertAssignee(board, req.body.assignee);
     const todo = await Todo.create({
-      ...Object.fromEntries(["workType", "storyPoints", "labels", "acceptanceCriteria", "blockedReason"].filter((key) => req.body[key] !== undefined).map((key) => [key, req.body[key]])),
+      ...Object.fromEntries(["description", "assignee", "workType", "storyPoints", "labels", "acceptanceCriteria", "blockedReason"].filter((key) => req.body[key] !== undefined).map((key) => [key, req.body[key]])),
       ...resolveWorkflow({ board: board._id }, req.body, board),
       user: req.userId,
 
@@ -333,7 +329,6 @@ router.post("/github-issue", async (req, res) => {
     }
 
     const existing = await Todo.findOne({
-      user: req.userId,
       board: board._id,
       "source.type": "github",
       "source.url": parsedUrl.toString(),
@@ -523,8 +518,8 @@ async function reorganizeAndSave(
   boardId,
 ) {
   const todos = await Todo.find({
-    user: userId,
     board: boardId,
+    archivedAt: null,
     completed: false,
   });
 
@@ -557,8 +552,8 @@ async function reorganizeAndSave(
   );
 
   return Todo.find({
-    user: userId,
     board: boardId,
+    archivedAt: null,
   }).sort({
     sortOrder: 1,
     createdAt: 1,
@@ -579,6 +574,8 @@ router.patch("/:id", async (req, res) => {
 
     const allowedFields = [
       "text",
+      "description",
+      "assignee",
       "priority",
       "completed",
       "timeHint",
@@ -652,7 +649,6 @@ router.patch("/:id", async (req, res) => {
     const existingTodo =
       await Todo.findOne({
         _id: req.params.id,
-        user: req.userId,
       });
 
     if (!existingTodo) {
@@ -661,9 +657,15 @@ router.patch("/:id", async (req, res) => {
       });
     }
 
-    const workflowBoard = await Board.findOne({ _id: updates.board || existingTodo.board, user: req.userId });
+    const sourceBoard = await findProject(req.userId, existingTodo.board, "write");
+    if (!sourceBoard) return res.status(404).json({ message: "Project not found or access denied" });
+    if (existingTodo.archivedAt && req.body.archived !== false) return res.status(409).json({ message: "Restore the issue before editing it" });
+    const workflowBoard = updates.board ? await findProject(req.userId, updates.board, "write") : sourceBoard;
     if (!workflowBoard) return res.status(404).json({ message: "Board not found" });
     Object.assign(updates, resolveWorkflow(existingTodo, req.body, workflowBoard));
+    if (req.body.assignee !== undefined) assertAssignee(workflowBoard, req.body.assignee);
+    else if (updates.board && String(updates.board) !== String(existingTodo.board)) updates.assignee = null;
+    if (req.body.archived !== undefined) updates.archivedAt = req.body.archived ? new Date() : null;
 
     /* -----------------------------
        Update Todo
@@ -673,7 +675,7 @@ router.patch("/:id", async (req, res) => {
       await Todo.findOneAndUpdate(
         {
           _id: req.params.id,
-          user: req.userId,
+          board: existingTodo.board,
         },
         updates,
         {
@@ -693,13 +695,13 @@ router.patch("/:id", async (req, res) => {
       req.body.duration !== undefined;
 
     if (reminderChanged || updates.completed !== existingTodo.completed || req.body.priority !== undefined) {
-      await microsoftCalendar.syncReminder(req.userId, todo);
+      await microsoftCalendar.syncReminder(String(todo.user), todo);
     }
 
     if (reminderChanged) {
       const user =
         await User.findById(
-          req.userId,
+          existingTodo.user,
         );
 
       if (user?.googleConnected) {
@@ -729,7 +731,7 @@ router.patch("/:id", async (req, res) => {
 
         // Create new event with updated date/time
         if (todo.reminderDateTime) {
-          await maybeCreateReminder(req.userId, todo, false);
+          await maybeCreateReminder(String(todo.user), todo, false);
         }
       }
     }
@@ -757,10 +759,13 @@ router.patch("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
+    validateId(req.params.id, "issue ID");
+    const existing = await Todo.findOne({ _id: req.params.id });
+    if (!existing || !await findProject(req.userId, existing.board, "write")) return res.status(404).json({ message: "Issue not found or access denied" });
     const todo =
       await Todo.findOneAndDelete({
         _id: req.params.id,
-        user: req.userId,
+        board: existing.board,
       });
 
     if (!todo) {
@@ -776,7 +781,7 @@ router.delete("/:id", async (req, res) => {
     if (todo.googleEventId) {
       const user =
         await User.findById(
-          req.userId,
+          todo.user,
         );
 
       if (user?.googleConnected) {
@@ -797,13 +802,14 @@ router.delete("/:id", async (req, res) => {
     let calendarWarning = null;
     if (todo.microsoftEventId) {
       try {
-        const user = await User.findById(req.userId).select("+microsoftTokens");
+        const user = await User.findById(todo.user).select("+microsoftTokens");
         if (!user?.microsoftConnected) calendarWarning = "Task deleted. Microsoft Calendar is disconnected; remove its old event in Outlook.";
         else await microsoftCalendar.deleteReminderEvent(user, todo.microsoftEventId);
       } catch { calendarWarning = "Task deleted, but its Outlook event could not be removed. Remove it in Outlook."; }
     }
     res.json({ message: "Deleted", calendarWarning });
   } catch (err) {
+    if (workflowError(res, err)) return;
     console.error(
       "Delete todo error:",
       err,

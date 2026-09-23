@@ -56,7 +56,7 @@ export default function SocialPanel({ boards, reloadBoards }) {
     } catch (err) { notify(err.response?.data?.message || "Failed to update sharing", "error"); }
   }
 
-  const ownedBoards = boards.filter((board) => board.access !== "shared");
+  const ownedBoards = boards.filter((board) => board.permissions?.canManage);
 
   return (
     <section className="settings-panel social-panel">

@@ -6,6 +6,9 @@ import FileStorage from "../components/FileStorage";
 import Settings from "../components/Settings";
 import GitHubDashboard from "../components/GitHubDashboard";
 import DynamicBoard from "../components/DynamicBoard";
+import ProjectHub from "../components/ProjectHub";
+import IssueList from "../components/IssueList";
+import "../components/projects.css";
 import PasswordVault from "../components/PasswordVault";
 import ResourceUtilization from "../components/ResourceUtilization";
 import CommandCenter from "../components/CommandCenter";
@@ -54,7 +57,8 @@ export default function Dashboard() {
 
   const activeBoard = boards.find((board) => board._id === activeBoardId);
   const intelligence = useProactiveIntelligence({ board: activeBoard, todos, githubConnected });
-  const canEditBoard = activeBoard?.access !== "shared";
+  const canEditBoard = Boolean(activeBoard?.permissions?.canEdit);
+  const canManageBoard = Boolean(activeBoard?.permissions?.canManage);
   const completedCount = todos.filter((todo) => todo.completed).length;
   const upcomingCount = todos.length - completedCount;
   const progress = todos.length ? Math.round((completedCount / todos.length) * 100) : 0;
@@ -110,7 +114,7 @@ export default function Dashboard() {
     try {
       const { data } = await api.get("/boards");
       setBoards(data);
-      setActiveBoardId((current) => current || data[0]?._id || "");
+      setActiveBoardId((current) => data.some((board) => board._id === current) ? current : data.find((board) => !board.archivedAt)?._id || "");
     } catch (err) {
       console.error("Load boards error:", err);
       setMessage(err.response?.data?.message || "Failed to load boards");
@@ -243,12 +247,10 @@ export default function Dashboard() {
   }
 
   async function handleDeleteBoard(board) {
-    const taskCount = board._id === activeBoardId ? todos.length : "all";
     const confirmed = await confirm({
-      title: `Delete ${board.name}?`,
-      message: `This will permanently delete ${taskCount} task${taskCount === 1 ? "" : "s"} from this board.`,
-      confirmLabel: "Delete board",
-      danger: true,
+      title: `Archive ${board.name}?`,
+      message: "Issues and sprint history will be retained. You can restore this project from Projects & Team.",
+      confirmLabel: "Archive project",
     });
 
     if (!confirmed) return;
@@ -256,10 +258,9 @@ export default function Dashboard() {
     try {
       setBusy(true);
       setMessage("");
-      const { data } = await api.delete(`/boards/${board._id}`);
-      setBoards(data.boards);
-      setActiveBoardId(data.boards[0]?._id || "");
-      setMessage(data.calendarWarning || `${board.name} deleted.`);
+      await api.patch(`/boards/${board._id}`, { archived: true });
+      await loadBoards();
+      setMessage(`${board.name} archived.`);
     } catch (err) {
       setMessage(err.response?.data?.message || "Failed to delete board");
     } finally {
@@ -452,6 +453,8 @@ export default function Dashboard() {
         </a>
 
         <div className="topbar-center">
+          <button type="button" className={activeView === "projects" ? "nav-link active" : "nav-link"} onClick={() => setActiveView("projects")}>Projects & Team</button>
+          <button type="button" className={activeView === "my-work" ? "nav-link active" : "nav-link"} onClick={() => setActiveView("my-work")}>My Work</button>
           <button type="button" className={activeView === "command" ? "nav-link active" : "nav-link"} onClick={() => setActiveView("command")}>Command</button>
           <button
             type="button"
@@ -510,12 +513,12 @@ export default function Dashboard() {
         {activeView === "workspace" && <button type="button" className="sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label={sidebarOpen ? "Close workspace sidebar" : "Open workspace sidebar"} title={sidebarOpen ? "Close sidebar" : "Open sidebar"}>{sidebarOpen ? "‹" : "›"}</button>}
         {activeView === "workspace" && <aside className="sidebar">
           <div className="sidebar-heading">
-            <span>Boards</span>
+            <span>Projects</span>
             <span className="count-badge">{boards.length}</span>
           </div>
 
           <div className="board-list">
-            {boards.map((board) => (
+            {boards.filter((board) => !board.archivedAt).map((board) => (
               <div className="board-nav-row" key={board._id}>
                 <button
                   type="button"
@@ -523,17 +526,17 @@ export default function Dashboard() {
                   onClick={() => setActiveBoardId(board._id)}
                 >
                   <span className="board-icon">{board.name.charAt(0).toUpperCase()}</span>
-                  <span className="board-name">{board.name}</span>
+                  <span className="board-name">{board.name}<small className="project-key">{board.projectKey}</small></span>
                   {board.access === "shared" && <span className="shared-board-mark" title={`Shared by @${board.owner?.username || "user"}`}>S</span>}
                   {board._id === activeBoardId && <span className="active-indicator" />}
                 </button>
-                {board.access !== "shared" && <button
+                {board.permissions?.canManage && <button
                   type="button"
                   className="board-delete-btn"
                   onClick={() => handleDeleteBoard(board)}
                   disabled={busy}
-                  aria-label={`Delete ${board.name}`}
-                  title="Delete board"
+                  aria-label={`Archive ${board.name}`}
+                  title="Archive project"
                 >
                   ×
                 </button>}
@@ -590,7 +593,7 @@ export default function Dashboard() {
           </div>
         </aside>}
 
-        {activeView === "command" ? <CommandCenter user={user} boards={boards} githubConnected={githubConnected} mode={operatingMode} onModeChange={changeOperatingMode} onNavigate={setActiveView} onBoard={openBoardFromCommand} onPalette={() => setCommandOpen(true)} /> : activeView === "files" ? <FileStorage /> : activeView === "github" ? (
+        {activeView === "projects" ? <ProjectHub projects={boards} reloadProjects={loadBoards} onOpen={openBoardFromCommand} /> : activeView === "my-work" ? <main className="workspace"><IssueList mine /></main> : activeView === "command" ? <CommandCenter user={user} boards={boards} githubConnected={githubConnected} mode={operatingMode} onModeChange={changeOperatingMode} onNavigate={setActiveView} onBoard={openBoardFromCommand} onPalette={() => setCommandOpen(true)} /> : activeView === "files" ? <FileStorage /> : activeView === "github" ? (
           <GitHubDashboard connected={githubConnected} connectGitHub={connectGitHub} boards={boards} activeBoardId={activeBoardId} />
         ) : activeView === "utilization" ? (
           <ResourceUtilization />
@@ -611,7 +614,7 @@ export default function Dashboard() {
         ) : <main className="workspace">
           <header className="workspace-header">
             <div>
-              <div className="eyebrow">CURRENT BOARD</div>
+              <div className="eyebrow">{activeBoard?.projectKey || "CURRENT PROJECT"} · {activeBoard?.role || ""}{activeBoard?.archivedAt ? " · Archived" : ""}</div>
               <h1>{activeBoard?.name || "Your workspace"}</h1>
               <p>Plan clearly, protect your time, and finish what matters.</p>
             </div>
@@ -626,7 +629,8 @@ export default function Dashboard() {
             </button>
           </header>
 
-          <DynamicBoard board={activeBoard} todos={todos} loading={loading} canEdit={canEditBoard} onToggle={handleToggle} onDelete={handleDelete} onBoardSaved={handleScratchpadSaved} onTodosChanged={() => loadTodos(activeBoardId)} />
+          <IssueList project={activeBoard} onCreated={() => loadTodos(activeBoardId)} />
+          <DynamicBoard board={activeBoard} todos={todos} loading={loading} canEdit={canEditBoard} canManage={canManageBoard} onToggle={handleToggle} onDelete={handleDelete} onBoardSaved={handleScratchpadSaved} onTodosChanged={() => loadTodos(activeBoardId)} />
         </main>}
       </div>
       <AssistantPanel open={assistantOpen} onClose={() => setAssistantOpen(false)} activeView={activeView} board={activeBoard} todos={todos} alerts={intelligence.alerts} onDismiss={intelligence.dismiss} onNavigate={setActiveView} />

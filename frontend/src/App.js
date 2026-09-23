@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import { PrivacyPolicy, TermsConditions } from "./pages/Legal";
 import { NotificationProvider } from "./context/NotificationContext";
 import Profile from "./pages/Profile";
+import Issue from "./pages/Issue";
 import OperationHud from "./components/OperationHud";
 
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsConditions />} />
           <Route path="/u/:username" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/issues/:key" element={<ProtectedRoute><Issue /></ProtectedRoute>} />
           <Route
             path="/"
             element={

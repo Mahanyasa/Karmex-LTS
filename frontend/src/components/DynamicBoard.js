@@ -26,7 +26,7 @@ function normalizeLayout(saved = []) {
   }).sort((a, b) => a.order - b.order);
 }
 
-export default function DynamicBoard({ board, todos, loading, canEdit, onToggle, onDelete, onBoardSaved, onTodosChanged }) {
+export default function DynamicBoard({ board, todos, loading, canEdit, canManage = canEdit, onToggle, onDelete, onBoardSaved, onTodosChanged }) {
   const { notify } = useNotifications();
   const [layout, setLayout] = useState(() => normalizeLayout(board?.dashboardLayout));
   const [customizing, setCustomizing] = useState(false);
@@ -41,7 +41,7 @@ export default function DynamicBoard({ board, todos, loading, canEdit, onToggle,
 
   function commitLayout(next) {
     setLayout(next);
-    if (!canEdit || !board?._id) return;
+    if (!canManage || !board?._id) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       try {
@@ -84,7 +84,7 @@ export default function DynamicBoard({ board, todos, loading, canEdit, onToggle,
     sprints: <SprintWorkspace board={board} todos={todos} canEdit={canEdit} onBoardSaved={onBoardSaved} onTodosChanged={onTodosChanged} />,
     calendar: <Calendar month={month} setMonth={setMonth} events={calendarEvents} />,
     upcoming: <Upcoming todos={upcoming} />,
-    workspace: canEdit ? <BoardScratchpad board={board} onSaved={onBoardSaved} /> : <ReadOnlyNotice board={board} />,
+    workspace: canManage ? <BoardScratchpad board={board} onSaved={onBoardSaved} /> : <ReadOnlyNotice board={board} />,
     tasks: <TaskTable todos={todos} loading={loading} canEdit={canEdit} onToggle={onToggle} onDelete={onDelete} />,
   }[id]);
 
@@ -94,7 +94,7 @@ export default function DynamicBoard({ board, todos, loading, canEdit, onToggle,
         <div><span className="eyebrow">DYNAMIC BOARD</span><h2>{board?.name || "Board"} dashboard</h2></div>
         <div className="board-toolbar-actions">
           {customizing && <div className="widget-library">{layout.map((item) => <button key={item.id} type="button" className={item.visible ? "active" : ""} onClick={() => toggleWidget(item.id)}>{TITLES[item.id]}</button>)}</div>}
-          {canEdit && <button type="button" className={customizing ? "accent-btn" : "secondary-btn"} onClick={() => setCustomizing(!customizing)}>{customizing ? "Done" : "Customize"}</button>}
+          {canManage && <button type="button" className={customizing ? "accent-btn" : "secondary-btn"} onClick={() => setCustomizing(!customizing)}>{customizing ? "Done" : "Customize"}</button>}
         </div>
       </div>
 
@@ -143,5 +143,5 @@ function TaskTable({ todos, loading, canEdit, onToggle, onDelete }) {
 }
 
 function ReadOnlyNotice({ board }) {
-  return <div className="shared-board-notice"><strong>Shared by @{board?.owner?.username}</strong><span>This board is read-only. Private notes and scratchpad stay with the owner.</span></div>;
+  return <div className="shared-board-notice"><strong>Owner notes</strong><span>Private notes and scratchpad stay with the project owner.</span></div>;
 }

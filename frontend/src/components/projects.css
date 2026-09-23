@@ -1,0 +1,33 @@
+.project-panel { margin: 18px 0; padding: 22px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface, #101821); color: var(--text); }
+.project-panel h2, .project-panel h3 { margin: 0 0 16px; }
+.project-panel p, .project-panel small { color: var(--muted); line-height: 1.6; }
+.project-form { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; }
+.project-form h2 { flex-basis: 100%; }
+.project-form label, .issue-filters label, .issue-detail-form label { display: flex; flex-direction: column; gap: 7px; font-size: 12px; }
+.project-panel input:not([type=checkbox]), .project-panel select, .project-panel textarea { background: #0a111b; color: var(--text); padding: 10px; border: 1px solid var(--border); border-radius: 5px; font: inherit; min-width: 0; }
+.project-panel select { max-width: 100%; }
+.project-panel button:focus-visible, .project-panel a:focus-visible, .project-panel input:focus-visible, .project-panel select:focus-visible, .project-panel textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.project-person { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 0; }
+.project-person > :first-child { margin-right: auto; }
+.project-person small { display: block; }
+.project-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 16px; }
+.project-card { display: flex; flex-direction: column; gap: 8px; text-align: left; padding: 18px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text); cursor: pointer; }
+.project-card.selected { border-color: var(--accent); }
+.project-checkbox { display: flex; gap: 8px; align-items: center; }
+.project-key { display: block; color: var(--muted); font-size: 9px; }
+.issue-quick-create { display: flex; gap: 12px; margin-bottom: 18px; }
+.issue-quick-create input { flex: 1; }
+.issue-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 16px 0; }
+.issue-results article { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+.issue-results a, .issue-markdown a { color: var(--accent); }
+.issue-results small { display: block; margin-top: 6px; }
+.issue-pagination { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 20px; }
+.issue-detail-form fieldset { display: flex; flex-direction: column; gap: 15px; border: 0; padding: 0; margin: 0 0 20px; min-width: 0; }
+.issue-detail-form textarea { resize: vertical; }
+.issue-detail-form > button { margin: 8px 12px 8px 0; }
+.issue-page { max-width: 1150px; margin: 0 auto; }
+.issue-markdown { overflow-wrap: anywhere; }
+.issue-markdown pre { padding: 16px; overflow-x: auto; background: #060b12; border-radius: 6px; }
+.issue-markdown code { font-family: Consolas, monospace; }
+.topbar-center { overflow-x: auto; }
+@media (max-width: 650px) { .project-panel { padding: 14px; } .issue-results article { align-items: flex-start; flex-direction: column; } .issue-quick-create { flex-wrap: wrap; } .project-form label { width: 100%; } }

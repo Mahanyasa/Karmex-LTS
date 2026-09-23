@@ -6,6 +6,7 @@ const microsoftCalendar = require("../utils/microsoftCalendar");
 const todoRouter = require("../routes/todoRoutes");
 const boardRouter = require("../routes/boardRoutes");
 const { resolveWorkflow, validateWorkItemInput, validateSprintTransition } = require("../utils/workflow");
+const { matches } = require("./projectTestHelpers");
 
 const owner = "111111111111111111111111";
 const viewer = "222222222222222222222222";
@@ -32,10 +33,10 @@ async function patch(body, userId = owner) {
 function mockUpdates() {
   let current = item();
   let writes = 0;
-  Board.findOne = async (query) => query.user === owner && String(query._id) === boardId ? board() : null;
-  Todo.findOne = async (query) => query.user === owner ? { ...current } : null;
+  Board.findOne = async (query) => matches(board(), query) ? board() : null;
+  Todo.findOne = async () => ({ ...current });
   Todo.findOneAndUpdate = async (query, updates, options) => {
-    assert.equal(query.user, owner);
+    assert.equal(String(query.board), String(current.board));
     assert.equal(options.runValidators, true);
     current = { ...current, ...updates }; writes++;
     return current;
@@ -89,7 +90,7 @@ test("shared viewers cannot patch work items or mutate sprints", async () => {
 });
 
 test("shared viewers can read sprint work but outsiders cannot", async () => {
-  Board.findOne = async (query) => query.$or?.[1]?.["sharedWith.user"] === viewer ? board() : null;
+  Board.findOne = async (query) => matches(board(), query) ? board() : null;
   Todo.find = (query) => { assert.equal(String(query.board), boardId); return { sort: async () => [item()] }; };
   const get = handler(todoRouter, "get", "/");
   const visible = response();
@@ -102,7 +103,7 @@ test("shared viewers can read sprint work but outsiders cannot", async () => {
 
 test("moving boards clears old sprint and rejects an explicit foreign sprint", async () => {
   const mock = mockUpdates();
-  Board.findOne = async (query) => query.user === owner ? { _id: query._id, sprints: [] } : null;
+  Board.findOne = async (query) => matches({ _id: query._id, user: owner, members: [] }, query) ? { _id: query._id, sprints: [] } : null;
   assert.equal((await patch({ boardId: otherId, sprintId })).statusCode, 400);
   assert.equal(mock.writes(), 0);
   const moved = await patch({ boardId: otherId });
